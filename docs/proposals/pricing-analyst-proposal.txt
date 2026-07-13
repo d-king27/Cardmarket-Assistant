@@ -1,0 +1,302 @@
+Pricing Analyst Proposal
+========================
+
+Purpose
+-------
+
+Add a future Pricing Analyst feature that reviews a selected collection, identifies likely price spikes or drops, and proposes price updates that the user can approve before anything changes.
+
+The main goal is to help keep collection prices useful for Cardmarket-oriented workflows without turning pricing into an opaque auto-update system. The feature should explain where each recommendation came from, how confident it is, and whether it is based on observed market data, inferred movement, or speculation.
+
+
+Recommended Direction
+---------------------
+
+Use a Cardmarket-first pricing strategy where possible, supported by a fallback/cache layer for reliability.
+
+The ideal path is:
+
+1. Resolve each card in the selected collection to a stable market identity.
+2. Fetch current and recent pricing data from available providers.
+3. Compare current local prices against market references.
+4. Flag spikes, drops, stale prices, missing prices, and low-confidence matches.
+5. Ask the agent to explain and prioritise recommendations.
+6. Let the user approve specific updates.
+7. Apply updates through a deterministic executor with audit and undo support.
+
+The agent should advise and explain, but it should not directly mutate prices. Price updates should remain approval-gated.
+
+
+Potential Data Sources
+----------------------
+
+Cardmarket API
+--------------
+
+This is the most relevant source because the application is already Cardmarket-oriented.
+
+Useful Cardmarket concepts:
+
+- Product data can include a priceGuide object.
+- The price guide may include values such as SELL, LOW, LOWEX+, LOWFOIL, AVG, TREND, and TRENDFOIL.
+- Product price-guide fields may not always be complete.
+- Article/offer data can include live listing prices, quantities, conditions, foil flags, and other useful details.
+
+Pros:
+
+- Closest match to the target marketplace.
+- Best fit for Cardmarket bulk upload and resale workflows.
+- Can support condition-aware and foil-aware pricing if enough data is available.
+
+Risks:
+
+- API access may require approval or credentials.
+- Rate limits and availability need to be designed around.
+- Some price-guide fields may be missing.
+- Historical trend depth may be limited depending on what access is available.
+- Matching imported ManaBox rows to Cardmarket product IDs may be non-trivial.
+
+Relevant docs:
+
+- https://api.cardmarket.com/ws/documentation/API_2.0%3AMain_Page
+- https://api.cardmarket.com/ws/documentation/API_2.0%3AMarket_Place_Information
+- https://api.cardmarket.com/ws/documentation/API_2.0%3AEntities%3AProduct
+- https://api.cardmarket.com/ws/documentation/API_2.0%3AEntities%3AArticle
+
+
+MTGJSON
+-------
+
+MTGJSON can be useful as a secondary source, especially for card identity, set data, printings, and potentially cached pricing snapshots depending on the available files.
+
+Pros:
+
+- Useful normalisation layer for Magic card identity.
+- Good fallback when direct market data is incomplete.
+- Helps with set codes, card UUIDs, printings, and metadata.
+
+Risks:
+
+- Not necessarily a perfect match for Cardmarket marketplace prices.
+- Pricing availability and freshness should be verified before relying on it.
+- More useful as supporting infrastructure than as the final pricing authority.
+
+Relevant docs:
+
+- https://mtgjson.com/api/v5/
+
+
+Scryfall
+--------
+
+Scryfall is best treated as a card identity and metadata resolver, not the primary pricing authority for this use case.
+
+Pros:
+
+- Excellent card search and identity matching.
+- Strong metadata for names, sets, collector numbers, finishes, and printings.
+- Helpful for resolving messy import data.
+
+Risks:
+
+- Prices are not Cardmarket-native.
+- Not ideal as the final source for Cardmarket resale decisions.
+
+
+Proposed Agent Design
+---------------------
+
+Introduce a Pricing Analyst Agent alongside the existing CSV Steward.
+
+The agent should follow a reflective pattern:
+
+1. Inspect the selected collection and identify what pricing data is needed.
+2. Call pricing and identity tools rather than guessing.
+3. Produce a structured analysis with confidence levels.
+4. Reflect on weak spots, missing data, stale data, and ambiguous matches.
+5. Propose changes separately from applying them.
+
+The agent should classify each recommendation as one of:
+
+- Observed: directly supported by recent provider data.
+- Inferred: derived from provider data but involving assumptions, such as condition or foil adjustment.
+- Speculative: based on weaker signals, volatility, scarcity, unusual listing patterns, or incomplete data.
+
+Speculative recommendations should never be auto-applied. They should be presented as notes or watchlist candidates.
+
+
+Proposed Tool Architecture
+--------------------------
+
+Add dedicated pricing tools that the agent can call:
+
+resolve_card_identities
+
+- Input: collection rows.
+- Output: candidate Cardmarket/Scryfall/MTGJSON identities, confidence score, ambiguity notes.
+
+fetch_pricing_snapshot
+
+- Input: resolved identities, condition, foil status, language, provider preferences.
+- Output: current price references, source, timestamp, and completeness warnings.
+
+analyze_price_movements
+
+- Input: local collection prices plus pricing snapshots.
+- Output: spikes, drops, stale prices, missing prices, spread between paid and current market, confidence.
+
+propose_price_updates
+
+- Input: analysis results and user pricing policy.
+- Output: suggested target price changes, reasons, and confidence.
+
+explain_pricing_rationale
+
+- Input: proposed changes.
+- Output: user-facing explanation of why each update was suggested.
+
+The write path should stay deterministic:
+
+- The agent proposes.
+- The UI previews.
+- The user approves.
+- The executor updates records.
+- Audit and undo are recorded.
+
+
+Suggested Data Model Additions
+------------------------------
+
+pricingSnapshots
+
+- id
+- provider
+- providerProductId
+- cardIdentityId
+- condition
+- finish
+- currency
+- observedAt
+- priceLow
+- priceAverage
+- priceTrend
+- priceSell
+- priceFoil
+- rawCompleteness
+
+pricingAnalysisRuns
+
+- id
+- collectionId
+- createdAt
+- providerSet
+- status
+- summary
+- warnings
+
+pricingRecommendations
+
+- id
+- runId
+- collectionCardId
+- currentLocalPrice
+- suggestedPrice
+- deltaAmount
+- deltaPercent
+- classification: observed, inferred, speculative
+- confidence
+- reason
+- sourceAge
+- status: pending, approved, rejected, applied
+
+
+Recommended First Version
+-------------------------
+
+Build the first implementation narrowly:
+
+1. Add a provider abstraction for pricing data.
+2. Add a Cardmarket provider if API access is available.
+3. Add a local pricing snapshot cache.
+4. Add identity resolution status to imported rows.
+5. Add a deterministic spike/drop analyser.
+6. Add a Pricing Analyst drawer or panel.
+7. Show recommendations in a clear review table.
+8. Allow selected price updates to be approved and applied.
+9. Add audit and undo support.
+10. Keep speculative commentary separate from direct price updates.
+
+
+Initial UI Concept
+------------------
+
+The Pricing Analyst panel should work like this:
+
+- Select a collection.
+- Choose a pricing source.
+- Choose reference price type, such as trend, average, low, or sell.
+- Run analysis.
+- Review flagged cards.
+- Filter by spike, drop, missing data, ambiguity, or speculation.
+- Approve individual updates or approve a selected group.
+- Apply updates.
+- Download or export updated collection later through the normal collection export flow.
+
+The clearest table columns would be:
+
+- Card
+- Set
+- Rarity
+- Finish
+- Condition
+- Current price
+- Market reference
+- Suggested price
+- Change
+- Confidence
+- Reason
+- Action
+
+
+Speculation Guardrails
+----------------------
+
+Speculation could be useful, but it needs strong boundaries.
+
+Allowed:
+
+- Identify cards with unusual movement.
+- Flag possible underpriced cards.
+- Suggest watchlist candidates.
+- Explain why a card may deserve manual review.
+- Note low supply, wide spreads, or sharp recent movement where the data supports it.
+
+Not allowed:
+
+- Apply speculative updates automatically.
+- Present speculation as fact.
+- Hide weak source quality.
+- Make investment-style claims without clear uncertainty.
+
+The UI should make speculative items visually distinct from observed pricing updates.
+
+
+Open Questions To Investigate
+-----------------------------
+
+- Can Cardmarket API access be obtained reliably for this app?
+- Which Cardmarket endpoints provide the best current pricing signal?
+- Are historical prices available enough to detect true spikes/drops?
+- Should the app use trend price, average, low, sell, or a configurable pricing policy?
+- How should condition, language, and foil handling affect suggested prices?
+- What rate limits apply, and how much caching is needed?
+- Can imported ManaBox rows be matched to Cardmarket product IDs with high confidence?
+- Should speculative analysis use only marketplace data, or also external signals later?
+
+
+Recommendation
+--------------
+
+Do this as a Phase 3 feature after the current collection-splitting workflow is stable.
+
+The best first version is not a fully autonomous pricing bot. It should be a review assistant: fetch data, highlight meaningful changes, explain its reasoning, and let the user approve updates. That keeps the workflow practical, auditable, and safe while leaving room for more agentic speculation later.

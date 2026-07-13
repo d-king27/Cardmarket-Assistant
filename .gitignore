@@ -3,7 +3,10 @@ dist
 coverage
 .vite
 .env
+.env.local
+.env.*.local
 *.local
+.npm-cache
 *.tsbuildinfo
 npm-debug.log*
 yarn-debug.log*

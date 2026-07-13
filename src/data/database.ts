@@ -1,10 +1,12 @@
 import Dexie, { type EntityTable } from "dexie";
 import type { ImportMetadata, InventoryCard, InventoryCollection } from "../models/inventory";
+import type { StewardAuditEntry } from "../steward/models";
 
 export class InventoryDatabase extends Dexie {
   cards!: EntityTable<InventoryCard, "id">;
   metadata!: EntityTable<ImportMetadata, "id">;
   collections!: EntityTable<InventoryCollection, "id">;
+  stewardAudit!: EntityTable<StewardAuditEntry, "id">;
 
   constructor() {
     super("manaboxCsvManager");
@@ -32,6 +34,12 @@ export class InventoryDatabase extends Dexie {
         createdAt: now,
         updatedAt: now,
       });
+    });
+    this.version(3).stores({
+      cards: "id, collectionId, name, setCode, rarity, condition, language, finish, updatedAt",
+      metadata: "id, collectionId, importedAt, modifiedAt",
+      collections: "id, name, updatedAt",
+      stewardAudit: "id, collectionId, createdAt, status",
     });
   }
 }

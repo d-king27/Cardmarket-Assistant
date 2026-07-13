@@ -27,11 +27,12 @@ textarea {
 .app-shell {
   width: min(1500px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 24px 0 48px;
+  padding: 24px 0 128px;
 }
 
 .import-panel,
 .collection-sidebar,
+.steward-launch-panel,
 .actions-panel,
 .table-panel,
 .empty-state,
@@ -40,6 +41,139 @@ textarea {
   border: 1px solid #dbe2dc;
   border-radius: 8px;
   box-shadow: 0 12px 32px rgba(29, 44, 38, 0.08);
+}
+
+.steward-drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(520px, 100%);
+  z-index: 3;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: 20px;
+  overflow-y: auto;
+  background: #ffffff;
+  border-left: 1px solid #dbe2dc;
+  box-shadow: -16px 0 40px rgba(21, 35, 28, 0.18);
+}
+
+.privacy-note {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #cfe0d5;
+  border-radius: 6px;
+  background: #f3faf5;
+  color: #3f5e4e;
+  line-height: 1.45;
+}
+
+.steward-request textarea {
+  min-height: 120px;
+}
+
+.steward-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #dbe2dc;
+  border-radius: 8px;
+  background: #fbfdfb;
+}
+
+.steward-card h3,
+.steward-card p {
+  margin: 0;
+}
+
+.steward-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.warning-text {
+  color: #76590b;
+  font-weight: 700;
+}
+
+.operation-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.operation-list li::marker {
+  color: #216445;
+}
+
+.operation-list button {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d8e3dc;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #244235;
+  cursor: pointer;
+  text-align: left;
+}
+
+.operation-list button:hover {
+  border-color: #9ec5ad;
+  background: #f3faf5;
+}
+
+.operation-list span {
+  color: #5c7167;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.preview-list,
+.preview-item,
+.planned-collections {
+  display: grid;
+  gap: 8px;
+}
+
+.preview-item,
+.planned-collection,
+.audit-row,
+.audit-entry {
+  padding: 10px;
+  border: 1px solid #e2e9e4;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.planned-collection,
+.audit-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.audit-entry {
+  display: grid;
+  gap: 10px;
+}
+
+.audit-downloads {
+  display: grid;
+  gap: 8px;
+}
+
+.audit-downloads .button {
+  justify-content: flex-start;
+  min-height: 34px;
+}
+
+.planned-collection small,
+.audit-row strong {
+  color: #5a7065;
 }
 
 .import-panel {
@@ -213,6 +347,47 @@ h2 {
 
 .collection-sidebar.collapsed {
   width: 68px;
+}
+
+.steward-launch-panel {
+  grid-column: 1 / -1;
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  z-index: 4;
+  width: min(900px, calc(100% - 32px));
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+}
+
+.steward-launch-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  background: #e5f4eb;
+  color: #1f6842;
+}
+
+.steward-launch-panel h2,
+.steward-launch-panel p {
+  margin: 0;
+}
+
+.steward-launch-panel p:not(.eyebrow) {
+  color: #51675c;
+  line-height: 1.45;
+}
+
+.steward-launch-button {
+  width: auto;
+  min-height: 46px;
+  white-space: nowrap;
 }
 
 .sidebar-header,
@@ -413,6 +588,8 @@ h2 {
 .collection-actions {
   margin-top: 12px;
   display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
   justify-content: flex-end;
 }
 
@@ -630,8 +807,11 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 
+  .inventory-workspace,
   .collection-sidebar,
   .collection-sidebar.collapsed {
+    grid-column: auto;
+    grid-row: auto;
     position: static;
     width: 100%;
   }
@@ -650,5 +830,16 @@ tbody tr:hover {
   .filters-panel,
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .steward-launch-panel {
+    bottom: 10px;
+    width: calc(100% - 20px);
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .steward-launch-button {
+    width: 100%;
   }
 }

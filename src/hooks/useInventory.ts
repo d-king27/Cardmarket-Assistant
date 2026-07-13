@@ -2,23 +2,19 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ImportMetadata, InventoryCard, InventoryCollection } from "../models/inventory";
 import { db } from "../data/database";
 import { applyValidationAndDuplicateWarnings } from "../services/duplicateDetector";
+import { exportInventoryToCsv } from "../services/csvExporter";
+import { latestUndoableAudit, markAuditUndone } from "../steward/auditLog";
+import { executeApprovedPlan } from "../steward/operationExecutor";
+import type { StewardAuditEntry, StewardPlan, StewardRuntimeContext } from "../steward/models";
 
 const defaultCollectionId = "default";
-
-function createDefaultCollection(now = new Date().toISOString()): InventoryCollection {
-  return {
-    id: defaultCollectionId,
-    name: "Main collection",
-    createdAt: now,
-    updatedAt: now,
-  };
-}
 
 export function useInventory() {
   const [cards, setCards] = useState<InventoryCard[]>([]);
   const [collections, setCollections] = useState<InventoryCollection[]>([]);
   const [activeCollectionId, setActiveCollectionId] = useState(defaultCollectionId);
   const [metadata, setMetadata] = useState<ImportMetadata | null>(null);
+  const [auditEntries, setAuditEntries] = useState<StewardAuditEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasInventory = cards.length > 0;
@@ -33,10 +29,12 @@ export function useInventory() {
         db.metadata.get(activeCollectionId),
         db.collections.toArray(),
       ]);
+      const storedAudit = await db.stewardAudit.where("collectionId").equals(activeCollectionId).toArray();
       const validated = applyValidationAndDuplicateWarnings(storedCards);
       setCards(validated);
       setCollections(storedCollections.sort((left, right) => left.name.localeCompare(right.name)));
       setMetadata(storedMetadata ?? null);
+      setAuditEntries(storedAudit.sort((left, right) => right.createdAt.localeCompare(left.createdAt)));
       setError(null);
     } catch (caught) {
       console.error("Failed to load inventory", caught);
@@ -53,6 +51,7 @@ export function useInventory() {
   const selectCollection = useCallback((collectionId: string) => {
     setCards([]);
     setMetadata(null);
+    setAuditEntries([]);
     setActiveCollectionId(collectionId);
   }, []);
 
@@ -193,6 +192,7 @@ export function useInventory() {
       setCollections((current) => upsertCollection(current, collection));
       setCards([]);
       setMetadata(null);
+      setAuditEntries([]);
       setActiveCollectionId(collection.id);
       setError(null);
     } catch (caught) {
@@ -236,6 +236,7 @@ export function useInventory() {
       setCollections(remaining.sort((left, right) => left.name.localeCompare(right.name)));
       setCards([]);
       setMetadata(null);
+      setAuditEntries([]);
       setActiveCollectionId(nextActiveId);
       setError(null);
     } catch (caught) {
@@ -288,6 +289,7 @@ export function useInventory() {
       setCollections((current) => upsertCollection(current, clonedCollection));
       setCards(clonedCards);
       setMetadata(clonedMetadata);
+      setAuditEntries([]);
       setActiveCollectionId(clonedCollection.id);
       setError(null);
     } catch (caught) {
@@ -296,6 +298,108 @@ export function useInventory() {
     }
   }, [collections]);
 
+  const exportActiveCollection = useCallback(() => {
+    if (!activeCollection || cards.length === 0) {
+      return;
+    }
+
+    const csv = exportInventoryToCsv(cards);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${slug(activeCollection.name)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [activeCollection, cards]);
+
+  const exportCollection = useCallback(async (collectionId: string) => {
+    const collection = collections.find((item) => item.id === collectionId);
+    if (!collection) return;
+
+    try {
+      const collectionCards =
+        collectionId === activeCollectionId
+          ? cards
+          : await db.cards.where("collectionId").equals(collectionId).toArray();
+      if (collectionCards.length === 0) return;
+
+      const csv = exportInventoryToCsv(collectionCards);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${slug(collection.name)}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (caught) {
+      console.error("Failed to export collection", caught);
+      setError("Could not export the collection.");
+    }
+  }, [activeCollectionId, cards, collections]);
+
+  const applyStewardPlan = useCallback(async (
+    plan: StewardPlan,
+    runtimeContext: Omit<StewardRuntimeContext, "cards" | "collection" | "existingCollections">,
+  ) => {
+    if (!activeCollection) return;
+
+    const result = executeApprovedPlan({
+      plan,
+      context: {
+        ...runtimeContext,
+        cards,
+        collection: activeCollection,
+        existingCollections: collections,
+      },
+      promptVersion: "phase2-v1",
+      model: "local-deterministic",
+    });
+
+    try {
+      await db.transaction("rw", db.cards, db.collections, db.stewardAudit, async () => {
+        if (result.auditEntry.changeSet.createdCollections.length > 0) {
+          await db.collections.bulkPut(result.auditEntry.changeSet.createdCollections);
+          const createdCards = result.auditEntry.changeSet.afterCards.filter((card) =>
+            result.auditEntry.changeSet.createdCollections.some((collection) => collection.id === card.collectionId),
+          );
+          if (createdCards.length > 0) await db.cards.bulkPut(createdCards);
+        }
+        await db.stewardAudit.put(result.auditEntry);
+      });
+      setCollections(result.collections.sort((left, right) => left.name.localeCompare(right.name)));
+      setAuditEntries((current) => [result.auditEntry, ...current]);
+      setError(null);
+    } catch (caught) {
+      console.error("Failed to apply Steward plan", caught);
+      setError("Could not apply the Steward plan.");
+    }
+  }, [activeCollection, cards, collections]);
+
+  const undoLatestStewardAction = useCallback(async () => {
+    const undoable = latestUndoableAudit(auditEntries, activeCollectionId);
+    if (!undoable) return;
+
+    const undone = markAuditUndone(undoable);
+    const createdIds = undoable.changeSet.createdCollections.map((collection) => collection.id);
+
+    try {
+      await db.transaction("rw", db.cards, db.collections, db.stewardAudit, async () => {
+        for (const collectionId of createdIds) {
+          await db.cards.where("collectionId").equals(collectionId).delete();
+          await db.collections.delete(collectionId);
+        }
+        await db.stewardAudit.put(undone);
+      });
+      setCollections((current) => current.filter((collection) => !createdIds.includes(collection.id)));
+      setAuditEntries((current) => current.map((entry) => (entry.id === undone.id ? undone : entry)));
+      setError(null);
+    } catch (caught) {
+      console.error("Failed to undo Steward action", caught);
+      setError("Could not undo the latest Steward action.");
+    }
+  }, [activeCollectionId, auditEntries]);
+
   return useMemo(
     () => ({
       cards,
@@ -303,6 +407,7 @@ export function useInventory() {
       activeCollection,
       activeCollectionId,
       metadata,
+      auditEntries,
       isLoading,
       error,
       hasInventory,
@@ -311,6 +416,10 @@ export function useInventory() {
       renameCollection,
       deleteCollection,
       cloneCollection,
+      exportActiveCollection,
+      exportCollection,
+      applyStewardPlan,
+      undoLatestStewardAction,
       importInventory,
       updateCard,
       removeCards,
@@ -322,6 +431,7 @@ export function useInventory() {
       activeCollection,
       activeCollectionId,
       metadata,
+      auditEntries,
       isLoading,
       error,
       hasInventory,
@@ -330,6 +440,10 @@ export function useInventory() {
       renameCollection,
       deleteCollection,
       cloneCollection,
+      exportActiveCollection,
+      exportCollection,
+      applyStewardPlan,
+      undoLatestStewardAction,
       importInventory,
       updateCard,
       removeCards,
@@ -348,6 +462,14 @@ function upsertCollection(
 
 function createId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `collection-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function slug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "collection";
 }
 
 function makeCollectionName(filename: string, collections: InventoryCollection[]): string {

@@ -1,5 +1,5 @@
 import type { RowSelectionState } from "@tanstack/react-table";
-import { Trash2 } from "lucide-react";
+import { Bot, Download, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ConfirmationDialog } from "./components/ConfirmationDialog";
 import { CollectionSidebar } from "./components/CollectionSidebar";
@@ -7,6 +7,7 @@ import { CsvImport } from "./components/CsvImport";
 import { EditCardPanel } from "./components/EditCardPanel";
 import { InventoryFilters } from "./components/InventoryFilters";
 import { InventoryTable } from "./components/InventoryTable";
+import { StewardDrawer } from "./components/StewardDrawer";
 import { useInventory } from "./hooks/useInventory";
 import type { InventoryCard, InventoryFilters as InventoryFiltersModel } from "./models/inventory";
 import { emptyFilters } from "./models/inventory";
@@ -25,10 +26,15 @@ export default function App() {
   const [selectedRows, setSelectedRows] = useState<RowSelectionState>({});
   const [editingCard, setEditingCard] = useState<InventoryCard | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation>(null);
+  const [isStewardOpen, setIsStewardOpen] = useState(false);
 
   const filteredCards = useMemo(
     () => filterCards(inventory.cards, search, filters),
     [inventory.cards, search, filters],
+  );
+  const selectedCardIds = useMemo(
+    () => Object.entries(selectedRows).filter(([, selected]) => selected).map(([cardId]) => cardId),
+    [selectedRows],
   );
 
   const confirmPendingAction = async () => {
@@ -88,6 +94,15 @@ export default function App() {
               />
               <div className="collection-actions">
                 <button
+                  className="button secondary"
+                  type="button"
+                  disabled={inventory.cards.length === 0}
+                  onClick={inventory.exportActiveCollection}
+                >
+                  <Download size={18} />
+                  Export CSV
+                </button>
+                <button
                   className="button danger"
                   type="button"
                   disabled={inventory.cards.length === 0}
@@ -119,6 +134,30 @@ export default function App() {
               />
             )}
           </section>
+
+          {!isStewardOpen ? (
+            <aside className="steward-launch-panel" aria-label="Steward AI">
+              <div className="steward-launch-icon">
+                <Bot size={22} />
+              </div>
+              <div>
+                <p className="eyebrow">Steward AI</p>
+                <h2>Collection operations</h2>
+                <p>
+                  Split this collection into Cardmarket-ready groups, preview the plan, then apply or download the generated collections.
+                </p>
+              </div>
+              <button
+                className="button primary steward-launch-button"
+                type="button"
+                disabled={inventory.cards.length === 0}
+                onClick={() => setIsStewardOpen(true)}
+              >
+                <Bot size={18} />
+                Open Steward AI
+              </button>
+            </aside>
+          ) : null}
         </div>
       ) : null}
 
@@ -154,6 +193,26 @@ export default function App() {
             }
             onConfirm={() => void confirmPendingAction()}
             onCancel={() => setPendingConfirmation(null)}
+          />
+          <StewardDrawer
+            isOpen={isStewardOpen}
+            collection={inventory.activeCollection}
+            collections={inventory.collections}
+            cards={inventory.cards}
+            filteredCards={filteredCards}
+            selectedCardIds={selectedCardIds}
+            filters={filters}
+            auditEntries={inventory.auditEntries}
+            onClose={() => setIsStewardOpen(false)}
+            onApply={(plan) =>
+              inventory.applyStewardPlan(plan, {
+                filteredCards,
+                selectedCardIds,
+                filters,
+              })
+            }
+            onUndo={inventory.undoLatestStewardAction}
+            onExportCollection={inventory.exportCollection}
           />
         </>
       ) : null}
