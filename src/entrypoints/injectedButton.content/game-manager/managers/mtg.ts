@@ -6,6 +6,7 @@ import GenericGameManager from './generic';
 import type { BaseColumnMapping, CommonParsedRowFields } from './generic';
 import { compareNormalized } from '../../../../utils';
 import type { TranslationKey } from '../../../../utils';
+import { cardmarketSelectors } from '../../cardmarket/selectors';
 import { parseBoolean } from '../utils';
 
 async function getMTGJSONDataImpl() {
@@ -24,7 +25,7 @@ async function matchSetToCardmarketIdImpl(set: string) {
 
 const matchSetToCardmarketId = memoize(matchSetToCardmarketIdImpl);
 
-const foilElSelector = 'td input[name^="isFoil"]';
+const foilElSelector = cardmarketSelectors.foilInput;
 
 class MtgGameManager extends GenericGameManager<'set' | 'isFoil', { set: string, isFoil: boolean }> {
   extraColumns: Record<'set' | 'isFoil', TranslationKey> = {

@@ -1,15 +1,14 @@
-import memoize from 'memoize';
+import { scanCardmarketPageRows } from '../../cardmarket/rowScanner';
+import { cardmarketSelectors } from '../../cardmarket/selectors';
 
-function getWebsiteRowsImpl() {
-  return [...document.querySelectorAll('td div.col-product.text-start a').values()];
+export function getWebsiteRows() {
+  return scanCardmarketPageRows().map((row) => row.productLinkElement);
 }
 
-export const getWebsiteRows = memoize(getWebsiteRowsImpl);
-
 // Selectors for the fields from the tr Element for each row
-export const languageElSelector = 'td select[name^="idLanguage"]';
-export const conditionElSelector = 'td select[name^="idCondition"]';
-export const signedElSelector = 'td input[name^="isSigned"]';
-export const commentElSelector = 'td input[name^="comments"]';
-export const quantityElSelector = 'td input[name^="amount"]';
-export const priceElSelector = 'td input[name^="price"]';
+export const languageElSelector = cardmarketSelectors.languageInput;
+export const conditionElSelector = cardmarketSelectors.conditionInput;
+export const signedElSelector = cardmarketSelectors.signedInput;
+export const commentElSelector = cardmarketSelectors.commentInput;
+export const quantityElSelector = cardmarketSelectors.quantityInput;
+export const priceElSelector = cardmarketSelectors.priceInput;

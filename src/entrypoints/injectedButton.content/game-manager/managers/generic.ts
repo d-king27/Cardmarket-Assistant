@@ -3,13 +3,13 @@ import * as yup from 'yup';
 import { compareNormalized, normalizeString } from '../../../../utils';
 import type { TranslationKey } from '../../../../utils';
 import { readCsv } from '../../../../utils/csv';
+import { scanCardmarketPageRows } from '../../cardmarket/rowScanner';
 import { parseBoolean } from '../utils';
 import { matchCondition } from '../utils/condition';
 import type { ConditionData } from '../utils/condition';
 import {
   commentElSelector,
   conditionElSelector,
-  getWebsiteRows,
   languageElSelector,
   priceElSelector,
   quantityElSelector,
@@ -100,10 +100,10 @@ class GenericGameManager<
   matchName(arg0: string, ...args: string[]): Promise<string | null> {
     const parsedName = arg0;
     let matchedName = null;
-    for (const row of getWebsiteRows()) {
-      const rowName = row.textContent;
+    for (const row of scanCardmarketPageRows()) {
+      const rowName = row.displayedName;
       // Look for a translated name besides it
-      const translatedName = row.nextSibling?.textContent ?? '';
+      const translatedName = row.productLinkElement.nextSibling?.textContent ?? '';
       if (compareNormalized(rowName, parsedName) || compareNormalized(translatedName, parsedName)) {
         return Promise.resolve(rowName);
       }
@@ -246,15 +246,14 @@ class GenericGameManager<
    * @returns The number of rows that were successfully filled in.
    */
   async fillPage(rows: (CommonParsedRowFields & ExtraParsedRowFields)[]): Promise<number> {
-    const websiteRows = getWebsiteRows();
+    const pageRows = scanCardmarketPageRows();
     let count = 0;
     for (const row of rows) {
-      const nameEl = websiteRows.find(
-        (el) => compareNormalized(el.textContent, row.name.matchedName ?? row.name.value),
+      const pageRow = pageRows.find(
+        (el) => compareNormalized(el.displayedName, row.name.matchedName ?? row.name.value),
       );
-      if (!nameEl) continue;
-      const trEl = nameEl.parentElement!.parentElement!.parentElement! as HTMLTableRowElement;
-      await this.fillRow(trEl, row);
+      if (!pageRow) continue;
+      await this.fillRow(pageRow.rowElement, row);
       count += 1;
     };
     return Promise.resolve(count);
