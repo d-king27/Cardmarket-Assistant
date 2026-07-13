@@ -9,6 +9,51 @@ Download it on the [Chrome Webstore](https://chromewebstore.google.com/detail/ca
 ![Demo](docs/demo.gif)
 
 
+## Run locally in Chrome
+
+You can run this extension locally with Chrome's built-in developer extension tools.
+
+1. Install the project dependencies:
+
+```text
+corepack yarn install
+```
+
+2. Build the Chrome extension:
+
+```text
+corepack yarn build
+```
+
+3. Open Chrome and go to:
+
+```text
+chrome://extensions
+```
+
+4. Turn on **Developer mode** in the top-right corner.
+
+5. Click **Load unpacked**.
+
+6. Select the generated build folder:
+
+```text
+.output/chrome-mv3
+```
+
+7. Open a Cardmarket Bulk Listing page. The extension button should appear near the bulk listing form.
+
+After changing the code, run `corepack yarn build` again, then return to `chrome://extensions` and click the reload button on the unpacked extension card.
+
+For a live development build, you can also run:
+
+```text
+corepack yarn dev
+```
+
+Then load the generated Chrome extension output shown by WXT in `chrome://extensions`.
+
+
 ## Common questions
 
 ### Can I use this extension to import my entire collection at once?
