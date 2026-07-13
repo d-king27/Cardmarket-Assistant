@@ -184,4 +184,13 @@ export default tseslint.config(
       'import/no-extraneous-dependencies': 'off',
     },
   },
+  {
+    files: ['vitest.config.ts', '**/*.test.ts', '**/*.test.tsx'],
+    languageOptions: {
+      globals: globals.vitest,
+    },
+    rules: {
+      'import/no-extraneous-dependencies': 'off',
+    },
+  },
 );
