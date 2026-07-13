@@ -41,7 +41,8 @@ export async function handleStewardPlan(rawBody: unknown): Promise<{ status: num
   try {
     const config = getStewardProviderConfig();
     const response = await callAnthropicForPlan(request, config);
-    const parsedResponse = stewardResponseSchema.safeParse(response);
+    const normalizedResponse = normalizeStewardResponse(response, request);
+    const parsedResponse = stewardResponseSchema.safeParse(normalizedResponse);
     if (!parsedResponse.success) {
       console.warn("Invalid Steward structured response", parsedResponse.error.flatten());
       const fallback = fallbackPlanForPrimarySplitRequest(
@@ -152,11 +153,6 @@ function stewardToolInputSchema() {
       },
     },
     required: ["type"],
-    oneOf: [
-      { required: ["type", "plan"], properties: { type: { const: "plan" } } },
-      { required: ["type", "question"], properties: { type: { const: "clarification" } } },
-      { required: ["type", "message", "reason"], properties: { type: { const: "unsupported" } } },
-    ],
   };
 }
 
@@ -172,13 +168,7 @@ function stewardPlanJsonSchema() {
       operations: {
         type: "array",
         minItems: 1,
-        items: {
-          oneOf: [
-            splitCollectionOperationJsonSchema(),
-            createBatchesOperationJsonSchema(),
-            viewFilterOperationJsonSchema(),
-          ],
-        },
+        items: operationJsonSchema(),
       },
       warnings: {
         type: "array",
@@ -198,12 +188,12 @@ function stewardPlanJsonSchema() {
   };
 }
 
-function splitCollectionOperationJsonSchema() {
+function operationJsonSchema() {
   return {
     type: "object",
     additionalProperties: false,
     properties: {
-      type: { const: "split_collection" },
+      type: { enum: ["split_collection", "create_batches", "set_view_filter"] },
       source: { enum: ["all", "filtered", "selected"] },
       predicate: predicateJsonSchema(),
       groupBy: {
@@ -215,46 +205,13 @@ function splitCollectionOperationJsonSchema() {
       namingTemplate: { type: "string" },
       cardmarketMode: { type: "boolean" },
       mode: { enum: ["copy", "move"] },
-    },
-    required: ["type", "source", "groupBy", "cardmarketMode", "mode"],
-  };
-}
-
-function createBatchesOperationJsonSchema() {
-  return {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      type: { const: "create_batches" },
-      source: { enum: ["all", "filtered", "selected"] },
-      predicate: predicateJsonSchema(),
-      groupBy: {
-        type: "array",
-        minItems: 1,
-        items: { enum: ["setCode", "setName", "rarity", "finish", "language", "condition"] },
-      },
       sortBy: {
         type: "array",
         items: sortRuleJsonSchema(),
       },
-      maximumRows: { type: "integer", minimum: 1, maximum: 100 },
       separateFiles: { type: "boolean" },
-      cardmarketMode: { type: "boolean" },
-      namingTemplate: { type: "string" },
     },
-    required: ["type", "source", "groupBy", "sortBy", "maximumRows", "separateFiles", "cardmarketMode"],
-  };
-}
-
-function viewFilterOperationJsonSchema() {
-  return {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      type: { const: "set_view_filter" },
-      predicate: predicateJsonSchema(),
-    },
-    required: ["type", "predicate"],
+    required: ["type"],
   };
 }
 
@@ -286,69 +243,47 @@ function sortRuleJsonSchema() {
 
 function predicateJsonSchema(): Record<string, unknown> {
   return {
-    oneOf: [
-      {
-        type: "object",
-        additionalProperties: false,
-        properties: { type: { const: "all" } },
-        required: ["type"],
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      type: { enum: ["all", "selected", "currently_filtered", "condition"] },
+      field: {
+        enum: [
+          "name",
+          "setCode",
+          "setName",
+          "collectorNumber",
+          "finish",
+          "rarity",
+          "quantity",
+          "purchasePrice",
+          "purchasePriceCurrency",
+          "condition",
+          "language",
+          "targetPrice",
+          "notes",
+        ],
       },
-      {
-        type: "object",
-        additionalProperties: false,
-        properties: { type: { const: "selected" } },
-        required: ["type"],
+      operator: {
+        enum: [
+          "equals",
+          "not_equals",
+          "contains",
+          "starts_with",
+          "ends_with",
+          "in",
+          "not_in",
+          "less_than",
+          "less_than_or_equal",
+          "greater_than",
+          "greater_than_or_equal",
+          "is_empty",
+          "is_not_empty",
+        ],
       },
-      {
-        type: "object",
-        additionalProperties: false,
-        properties: { type: { const: "currently_filtered" } },
-        required: ["type"],
-      },
-      {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          type: { const: "condition" },
-          field: {
-            enum: [
-              "name",
-              "setCode",
-              "setName",
-              "collectorNumber",
-              "finish",
-              "rarity",
-              "quantity",
-              "purchasePrice",
-              "purchasePriceCurrency",
-              "condition",
-              "language",
-              "targetPrice",
-              "notes",
-            ],
-          },
-          operator: {
-            enum: [
-              "equals",
-              "not_equals",
-              "contains",
-              "starts_with",
-              "ends_with",
-              "in",
-              "not_in",
-              "less_than",
-              "less_than_or_equal",
-              "greater_than",
-              "greater_than_or_equal",
-              "is_empty",
-              "is_not_empty",
-            ],
-          },
-          value: {},
-        },
-        required: ["type", "field", "operator"],
-      },
-    ],
+      value: {},
+    },
+    required: ["type"],
   };
 }
 
@@ -372,6 +307,164 @@ function buildCachedSystemPrompt() {
 
 function safeError(status: number, message: string): { status: number; body: { message: string } } {
   return { status, body: { message } };
+}
+
+function normalizeStewardResponse(rawResponse: unknown, request: StewardPlanRequest): unknown {
+  if (!isRecord(rawResponse)) {
+    return rawResponse;
+  }
+
+  if (rawResponse.type === "plan" && isRecord(rawResponse.plan)) {
+    return {
+      ...rawResponse,
+      plan: normalizePlanObject(rawResponse.plan, request),
+    };
+  }
+
+  if (rawResponse.type === "plan" && Array.isArray(rawResponse.operations)) {
+    return {
+      type: "plan",
+      plan: normalizePlanObject(rawResponse, request),
+    };
+  }
+
+  if (rawResponse.type === "unsupported" && typeof rawResponse.message === "string") {
+    return {
+      ...rawResponse,
+      reason: isUnsupportedReason(rawResponse.reason) ? rawResponse.reason : "operation_not_supported",
+    };
+  }
+
+  if (isStewardResponseType(rawResponse.type)) {
+    return rawResponse;
+  }
+
+  if (isRecord(rawResponse.plan)) {
+    return { ...rawResponse, type: "plan" };
+  }
+
+  if (Array.isArray(rawResponse.operations)) {
+    return {
+      type: "plan",
+      plan: normalizePlanObject(rawResponse, request),
+    };
+  }
+
+  if (isStewardOperationType(rawResponse.type)) {
+    return {
+      type: "plan",
+      plan: normalizePlanObject({ operations: [rawResponse] }, request),
+    };
+  }
+
+  if (typeof rawResponse.question === "string") {
+    return {
+      ...rawResponse,
+      type: "clarification",
+    };
+  }
+
+  if (typeof rawResponse.message === "string") {
+    return {
+      ...rawResponse,
+      type: "unsupported",
+      reason: isUnsupportedReason(rawResponse.reason) ? rawResponse.reason : "operation_not_supported",
+    };
+  }
+
+  return rawResponse;
+}
+
+function normalizePlanObject(rawPlan: Record<string, unknown>, request: StewardPlanRequest): Record<string, unknown> {
+  const operations = Array.isArray(rawPlan.operations)
+    ? rawPlan.operations.map((operation) => (isRecord(operation) ? normalizeOperationObject(operation, request) : operation))
+    : [];
+
+  return {
+    id: typeof rawPlan.id === "string" ? rawPlan.id : `steward-plan-${Date.now()}`,
+    title: typeof rawPlan.title === "string" ? rawPlan.title : "Steward operation plan",
+    summary: typeof rawPlan.summary === "string" ? rawPlan.summary : "Preview and apply a Steward operation for the active collection.",
+    userRequest: typeof rawPlan.userRequest === "string" ? rawPlan.userRequest : request.request,
+    operations,
+    warnings: Array.isArray(rawPlan.warnings) ? rawPlan.warnings : [],
+    assumptions: Array.isArray(rawPlan.assumptions) ? rawPlan.assumptions : [],
+  };
+}
+
+function normalizeOperationObject(operation: Record<string, unknown>, request: StewardPlanRequest): Record<string, unknown> {
+  const normalizedType = normalizeOperationType(operation.type);
+  const normalized = {
+    ...operation,
+    type: normalizedType,
+  };
+
+  if (normalizedType === "split_collection") {
+    return {
+      ...normalized,
+      source: isScope(normalized.source) ? normalized.source : request.scope,
+      groupBy: normalizeGroupBy(normalized.groupBy),
+      maximumRows: typeof normalized.maximumRows === "number" ? normalized.maximumRows : 75,
+      cardmarketMode: typeof normalized.cardmarketMode === "boolean" ? normalized.cardmarketMode : true,
+      mode: normalized.mode === "move" ? "move" : "copy",
+    };
+  }
+
+  if (normalizedType === "create_batches") {
+    return {
+      ...normalized,
+      source: isScope(normalized.source) ? normalized.source : request.scope,
+      groupBy: normalizeGroupBy(normalized.groupBy),
+      sortBy: Array.isArray(normalized.sortBy) ? normalized.sortBy : [],
+      maximumRows: typeof normalized.maximumRows === "number" ? normalized.maximumRows : 75,
+      separateFiles: typeof normalized.separateFiles === "boolean" ? normalized.separateFiles : true,
+      cardmarketMode: typeof normalized.cardmarketMode === "boolean" ? normalized.cardmarketMode : true,
+    };
+  }
+
+  return normalized;
+}
+
+function normalizeOperationType(type: unknown): unknown {
+  if (type === "split" || type === "splitCollection" || type === "split collection") return "split_collection";
+  if (type === "batch" || type === "batches" || type === "createBatches" || type === "create batches") return "create_batches";
+  if (type === "filter" || type === "view_filter" || type === "set view filter") return "set_view_filter";
+  return type;
+}
+
+function normalizeGroupBy(groupBy: unknown): unknown[] {
+  if (!Array.isArray(groupBy)) {
+    return ["setName", "rarity"];
+  }
+
+  const normalized = groupBy
+    .map((field) => {
+      if (field === "set name" || field === "set_name" || field === "setName") return "setName";
+      if (field === "set code" || field === "set_code" || field === "setCode") return "setCode";
+      return field;
+    })
+    .filter((field) => field === "setCode" || field === "setName" || field === "rarity" || field === "finish" || field === "language" || field === "condition");
+
+  return normalized.length > 0 ? normalized : ["setName", "rarity"];
+}
+
+function isScope(value: unknown): value is StewardPlanRequest["scope"] {
+  return value === "all" || value === "filtered" || value === "selected";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isStewardResponseType(value: unknown): value is StewardResponse["type"] {
+  return value === "plan" || value === "clarification" || value === "unsupported";
+}
+
+function isStewardOperationType(value: unknown): boolean {
+  return value === "split_collection" || value === "create_batches" || value === "set_view_filter";
+}
+
+function isUnsupportedReason(value: unknown): value is "external_data_required" | "operation_not_supported" | "ambiguous_request" | "unsafe_request" {
+  return value === "external_data_required" || value === "operation_not_supported" || value === "ambiguous_request" || value === "unsafe_request";
 }
 
 function fallbackPlanForPrimarySplitRequest(request: StewardPlanRequest, fallbackReason: string): StewardResponse | null {
