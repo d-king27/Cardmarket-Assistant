@@ -6,6 +6,8 @@ import GenericGameManager from './generic';
 import type { BaseColumnMapping, CommonParsedRowFields } from './generic';
 import { compareNormalized } from '../../../../utils';
 import type { TranslationKey } from '../../../../utils';
+import { parseCardmarketPageContext } from '../../cardmarket/pageContext';
+import { cardmarketSelectors } from '../../cardmarket/selectors';
 import { parseBoolean } from '../utils';
 
 async function getMTGJSONDataImpl() {
@@ -24,7 +26,7 @@ async function matchSetToCardmarketIdImpl(set: string) {
 
 const matchSetToCardmarketId = memoize(matchSetToCardmarketIdImpl);
 
-const foilElSelector = 'td input[name^="isFoil"]';
+const foilElSelector = cardmarketSelectors.foilInput;
 
 class MtgGameManager extends GenericGameManager<'set' | 'isFoil', { set: string, isFoil: boolean }> {
   extraColumns: Record<'set' | 'isFoil', TranslationKey> = {
@@ -46,11 +48,14 @@ class MtgGameManager extends GenericGameManager<'set' | 'isFoil', { set: string,
     let set = columnMapping['set'] ? String(rawRowData[columnMapping['set']]) : '';
     let enabled = parsedData.enabled;
     if (set) {
-      const paramsCode = Number(new URLSearchParams(window.location.search).get('idExpansion'));
+      const pageContext = parseCardmarketPageContext();
       const data = await matchSetToCardmarketId(set);
       if (data) {
         set = data.code;
-        if (data.cardmarketId !== paramsCode) enabled = false;
+        if (
+          pageContext.expansionId.kind === 'valid'
+          && data.cardmarketId !== pageContext.expansionId.value
+        ) enabled = false;
       }
       else {
         set = '';
