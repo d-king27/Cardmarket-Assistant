@@ -1,0 +1,1 @@
+# cardmarket-playwright-tool
