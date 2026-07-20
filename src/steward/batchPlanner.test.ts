@@ -51,7 +51,12 @@ describe("planBatches", () => {
     });
 
     expect(batches).toHaveLength(4);
-    expect(batches[0].filename).toMatch(/batch-01\\.csv$/);
+    expect(batches.map((batch) => batch.filename)).toEqual([
+      "001__FOU__rare.csv",
+      "002__FOU__rare.csv",
+      "003__FOU__uncommon.csv",
+      "004__TAR__rare.csv",
+    ]);
     expect(batches.every((batch) => batch.recordCount <= 1)).toBe(true);
     expect(batches.some((batch) => batch.warnings.some((warning) => warning.includes("Cardmarket")))).toBe(true);
   });

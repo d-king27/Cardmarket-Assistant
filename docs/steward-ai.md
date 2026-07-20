@@ -93,6 +93,30 @@ The strongest supported workflow is collection splitting:
 - create batches with a maximum row count
 - copy records into new collections while preserving the source collection
 
+## Cardmarket CSV Naming
+
+Steward-created Cardmarket collections use this filename convention:
+
+```text
+001__DFT__rare.csv
+002__DFT__uncommon.csv
+003__RVR__uncommon.csv
+```
+
+The format is:
+
+```text
+number__set-code__rarity.csv
+```
+
+Rules:
+
+- `number` is a three-digit sequence.
+- `set-code` is uppercase.
+- `rarity` is lowercase.
+- separators are double underscores.
+- duplicate generated collections keep the same convention by advancing the sequence number.
+
 ## Current Boundaries
 
 Requests requiring external market data are unsupported in this phase, including:

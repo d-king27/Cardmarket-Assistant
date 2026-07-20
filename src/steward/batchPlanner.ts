@@ -24,19 +24,24 @@ export function planBatches(input: BatchPlanInput): PlannedCollection[] {
       const groupValues = Object.fromEntries(
         input.groupBy.map((field, index) => [field, key.split("|")[index] || "unknown"]),
       );
+      groupValues.setCode = groupValues.setCode || normalizeGroupValue(groupCards[0]?.setCode);
+      groupValues.rarity = groupValues.rarity || normalizeGroupValue(groupCards[0]?.rarity);
       const sortedCards = sortCards(groupCards, input.sortBy);
       const chunks = chunk(sortedCards, input.maximumRows);
 
       chunks.forEach((cards, index) => {
-        const name = makeBatchName(groupValues, input.namingTemplate, index + 1);
+        const batchNumber = planned.length + 1;
+        const name = input.cardmarketMode
+          ? makeCardmarketBatchName(groupValues, batchNumber)
+          : makeBatchName(groupValues, input.namingTemplate, index + 1);
         planned.push({
-          id: stableBatchId(name, index + 1),
+          id: stableBatchId(name, batchNumber),
           name,
           recordCount: cards.length,
           totalQuantity: cards.reduce((total, card) => total + Math.max(0, card.quantity), 0),
           groupValues,
           sourceCardIds: cards.map((card) => card.id),
-          filename: `${slug(name)}.csv`,
+          filename: input.cardmarketMode ? `${name}.csv` : `${slug(name)}.csv`,
           warnings: input.cardmarketMode
             ? [
                 "ManaBox set names and set codes may not exactly match Cardmarket expansions.",
@@ -90,6 +95,13 @@ function makeBatchName(groupValues: Record<string, string>, template: string | u
   });
 }
 
+function makeCardmarketBatchName(groupValues: Record<string, string>, batchNumber: number): string {
+  const sequence = String(batchNumber).padStart(3, "0");
+  const setCode = sanitizeSetCode(groupValues.setCode);
+  const rarity = sanitizeFilenamePart(groupValues.rarity).toLowerCase();
+  return `${sequence}__${setCode}__${rarity}`;
+}
+
 function stableBatchId(name: string, index: number): string {
   return `${slug(name)}-${index}`;
 }
@@ -100,4 +112,18 @@ export function slug(value: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80) || "batch";
+}
+
+function sanitizeSetCode(value: string): string {
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "") || "UNKNOWN";
+}
+
+function sanitizeFilenamePart(value: string): string {
+  return value
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "unknown";
 }

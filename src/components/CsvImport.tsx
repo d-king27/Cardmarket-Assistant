@@ -38,7 +38,7 @@ export function CsvImport({ onImport }: CsvImportProps) {
     setIsImporting(true);
     setMessage(null);
     try {
-      const text = await selectedFile.text();
+      const text = await readFileText(selectedFile);
       const result = parseManaBoxCsv(text);
       const importWarnings = [
         ...result.rowIssues.map((issue) => issue.message),
@@ -137,4 +137,17 @@ export function CsvImport({ onImport }: CsvImportProps) {
       {message ? <p className="notice">{message}</p> : null}
     </section>
   );
+}
+
+function readFileText(file: File): Promise<string> {
+  if (typeof file.text === "function") {
+    return file.text();
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("Could not read file."));
+    reader.readAsText(file);
+  });
 }

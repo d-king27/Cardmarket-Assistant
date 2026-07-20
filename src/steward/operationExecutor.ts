@@ -70,6 +70,18 @@ export function executeApprovedPlan({
 function makeUniqueName(baseName: string, collections: InventoryCollection[]): string {
   const existing = new Set(collections.map((collection) => collection.name.toLowerCase()));
   if (!existing.has(baseName.toLowerCase())) return baseName;
+
+  const cardmarketName = parseCardmarketCollectionName(baseName);
+  if (cardmarketName) {
+    let sequence = cardmarketName.sequence + 1;
+    let candidate = formatCardmarketCollectionName(sequence, cardmarketName.setCode, cardmarketName.rarity);
+    while (existing.has(candidate.toLowerCase())) {
+      sequence += 1;
+      candidate = formatCardmarketCollectionName(sequence, cardmarketName.setCode, cardmarketName.rarity);
+    }
+    return candidate;
+  }
+
   let index = 2;
   let candidate = `${baseName} ${index}`;
   while (existing.has(candidate.toLowerCase())) {
@@ -77,6 +89,20 @@ function makeUniqueName(baseName: string, collections: InventoryCollection[]): s
     candidate = `${baseName} ${index}`;
   }
   return candidate;
+}
+
+function parseCardmarketCollectionName(value: string): { sequence: number; setCode: string; rarity: string } | null {
+  const match = value.match(/^(\d{3})__([A-Z0-9]+)__([a-z0-9_-]+)$/i);
+  if (!match) return null;
+  return {
+    sequence: Number(match[1]),
+    setCode: match[2].toUpperCase(),
+    rarity: match[3].toLowerCase(),
+  };
+}
+
+function formatCardmarketCollectionName(sequence: number, setCode: string, rarity: string): string {
+  return `${String(sequence).padStart(3, "0")}__${setCode}__${rarity}`;
 }
 
 function createId(): string {

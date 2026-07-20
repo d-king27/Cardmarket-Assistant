@@ -308,7 +308,7 @@ export function useInventory() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${slug(activeCollection.name)}.csv`;
+    link.download = exportFilenameForCollection(activeCollection.name);
     link.click();
     URL.revokeObjectURL(url);
   }, [activeCollection, cards]);
@@ -329,7 +329,7 @@ export function useInventory() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${slug(collection.name)}.csv`;
+      link.download = exportFilenameForCollection(collection.name);
       link.click();
       URL.revokeObjectURL(url);
     } catch (caught) {
@@ -470,6 +470,24 @@ function slug(value: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80) || "collection";
+}
+
+function exportFilenameForCollection(collectionName: string): string {
+  const trimmed = collectionName.trim();
+  if (/^\d{3}__[A-Z0-9]+__[a-z0-9_-]+$/i.test(trimmed)) {
+    return `${sanitizeCardmarketFilename(trimmed)}.csv`;
+  }
+
+  return `${slug(collectionName)}.csv`;
+}
+
+function sanitizeCardmarketFilename(value: string): string {
+  const [sequence = "001", setCode = "UNKNOWN", rarity = "unknown"] = value.split("__");
+  return [
+    sequence.replace(/\D/g, "").padStart(3, "0").slice(-3) || "001",
+    setCode.toUpperCase().replace(/[^A-Z0-9]+/g, "") || "UNKNOWN",
+    rarity.toLowerCase().replace(/[^a-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "") || "unknown",
+  ].join("__");
 }
 
 function makeCollectionName(filename: string, collections: InventoryCollection[]): string {

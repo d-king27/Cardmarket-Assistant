@@ -23,8 +23,10 @@ describe("ManaBox CSV Manager", () => {
     await user.upload(screen.getByLabelText("CSV file"), file);
     await user.click(screen.getByRole("button", { name: "Import CSV" }));
 
-    expect(await screen.findByText("Daredevil, Fearless Fighter")).toBeInTheDocument();
-    expect(await screen.findByText("Main collection")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Daredevil, Fearless Fighter")).toBeInTheDocument();
+      expect(screen.getByText("Main collection")).toBeInTheDocument();
+    });
 
     await user.click(screen.getByRole("button", { name: "Edit Daredevil, Fearless Fighter" }));
     const panel = screen.getByLabelText("Edit card");
