@@ -95,3 +95,8 @@ The versioned manifest records:
 
 Later milestones will update processing results without changing the immutable
 source CSV files.
+
+The runtime manifest schema and queue status values are owned by the monorepo
+package at `packages/cardmarket-contracts`. See
+`docs/shared-contracts.md` from the monorepo root for versioning and validation
+rules.

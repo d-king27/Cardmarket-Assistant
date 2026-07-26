@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { contractZod } from "@cardmarket-assistant/contracts";
 import {
   queueJobManifestSchema,
   queuePublishRequestSchema,
@@ -8,16 +8,16 @@ import type {
   QueuePublishRequest,
 } from "../cardmarket/queueModels";
 
-const publishedJobSchema = z
+const publishedJobSchema = contractZod
   .object({
     job: queueJobManifestSchema,
-    directory: z.string(),
+    directory: contractZod.string(),
   })
   .strict();
 
-const jobListSchema = z
+const jobListSchema = contractZod
   .object({
-    jobs: z.array(queueJobManifestSchema),
+    jobs: contractZod.array(queueJobManifestSchema),
   })
   .strict();
 

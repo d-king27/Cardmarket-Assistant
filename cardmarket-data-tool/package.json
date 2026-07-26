@@ -13,6 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@cardmarket-assistant/contracts": "file:../packages/cardmarket-contracts",
     "@anthropic-ai/sdk": "^0.60.0",
     "@tanstack/react-table": "^8.21.3",
     "dexie": "^4.0.11",

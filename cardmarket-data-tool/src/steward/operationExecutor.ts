@@ -1,6 +1,7 @@
 import type { InventoryCard, InventoryCollection } from "../models/inventory";
 import { applyValidationAndDuplicateWarnings } from "../services/duplicateDetector";
 import type { StewardAuditEntry, StewardChangeSet, StewardPlan, StewardRuntimeContext } from "./models";
+import { assertStewardPlanIsExecutable } from "./capabilities";
 import { previewPlan } from "./operationPreview";
 
 export function executeApprovedPlan({
@@ -14,6 +15,7 @@ export function executeApprovedPlan({
   promptVersion: string;
   model: string;
 }): { cards: InventoryCard[]; collections: InventoryCollection[]; auditEntry: StewardAuditEntry } {
+  assertStewardPlanIsExecutable(plan);
   const preview = previewPlan(plan, context);
   const createdCollections: InventoryCollection[] = [];
   let nextCards = [...context.cards];

@@ -1,6 +1,10 @@
 import { stewardPlanRequestSchema, stewardResponseSchema } from "../src/steward/schemas";
 import type { BatchGroupingField, StewardPlan, StewardPlanRequest, StewardResponse } from "../src/steward/models";
 import {
+  EXECUTABLE_STEWARD_OPERATION_TYPES,
+  assertStewardPlanIsExecutable,
+} from "../src/steward/capabilities";
+import {
   ConfigError,
   getStewardProviderConfig,
   STEWARD_MAX_TOKENS,
@@ -53,6 +57,27 @@ export async function handleStewardPlan(rawBody: unknown): Promise<{ status: num
         return { status: 200, body: fallback };
       }
       return safeError(502, "CSV Steward received an invalid structured response.");
+    }
+    if (parsedResponse.data.type === "plan") {
+      try {
+        assertStewardPlanIsExecutable(parsedResponse.data.plan);
+      } catch {
+        const fallback = fallbackPlanForPrimarySplitRequest(
+          request,
+          "The Steward used the safe local fallback because the model proposed an operation that this version cannot execute.",
+        );
+        if (fallback) {
+          return { status: 200, body: fallback };
+        }
+        return {
+          status: 200,
+          body: {
+            type: "unsupported",
+            reason: "operation_not_supported",
+            message: "This version of Steward cannot safely execute the proposed operation.",
+          } satisfies StewardResponse,
+        };
+      }
     }
     return { status: 200, body: parsedResponse.data };
   } catch (caught) {
@@ -109,18 +134,7 @@ async function callAnthropicForPlan(
               userRequest: request.request,
               scope: request.scope,
               collectionContext: request.context,
-              supportedOperations: [
-                "set_view_filter",
-                "sort",
-                "set_field",
-                "adjust_number",
-                "round_number",
-                "remove_records",
-                "transfer_records",
-                "create_batches",
-                "split_collection",
-                "prepare_export",
-              ],
+              supportedOperations: EXECUTABLE_STEWARD_OPERATION_TYPES,
             }),
           },
         ],
@@ -193,7 +207,7 @@ function operationJsonSchema() {
     type: "object",
     additionalProperties: false,
     properties: {
-      type: { enum: ["split_collection", "create_batches", "set_view_filter"] },
+      type: { enum: EXECUTABLE_STEWARD_OPERATION_TYPES },
       source: { enum: ["all", "filtered", "selected"] },
       predicate: predicateJsonSchema(),
       groupBy: {

@@ -82,7 +82,8 @@ Undo is local and never calls Anthropic.
 
 ## Current Supported Workflow
 
-The strongest supported workflow is collection splitting:
+The only operation currently advertised to the model and accepted for execution
+is `split_collection`. It supports:
 
 - split by set name
 - split by set code
@@ -92,6 +93,10 @@ The strongest supported workflow is collection splitting:
 - split by condition
 - create batches with a maximum row count
 - copy records into new collections while preserving the source collection
+
+Other operation models remain in the application for future work, but the
+Steward does not advertise or execute them yet. An unsupported operation is
+rejected before inventory can be changed.
 
 ## Cardmarket CSV Naming
 

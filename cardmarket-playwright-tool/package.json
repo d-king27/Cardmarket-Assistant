@@ -17,6 +17,7 @@
     "demo": "tsx src/index.ts demo"
   },
   "dependencies": {
+    "@cardmarket-assistant/contracts": "file:../packages/cardmarket-contracts",
     "@playwright/test": "^1.61.1",
     "csv-parse": "^7.0.1",
     "csv-stringify": "^6.8.1",
