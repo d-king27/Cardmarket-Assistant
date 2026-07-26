@@ -9,6 +9,7 @@ This directory keeps the longer project notes out of the GitHub landing page whi
 
 ## Proposals
 
+- [Data Steward and AI roadmap](proposals/data-steward-ai-roadmap.md): later agent architecture, shared data foundations, and the recommended order for data quality, pricing, deckbuilding, and reconciliation features.
 - [Pricing Analyst proposal](proposals/pricing-analyst-proposal.txt): future plan for reviewing selected collection prices, identifying spikes/drops, and proposing price updates.
 
 ## Quick Reset For Manual Testing
