@@ -1,6 +1,7 @@
 import type { RowSelectionState } from "@tanstack/react-table";
-import { Bot, Download, Trash2 } from "lucide-react";
+import { Bot, Download, PackageOpen, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { CardmarketQueueDrawer } from "./components/CardmarketQueueDrawer";
 import { ConfirmationDialog } from "./components/ConfirmationDialog";
 import { CollectionSidebar } from "./components/CollectionSidebar";
 import { CsvImport } from "./components/CsvImport";
@@ -27,6 +28,7 @@ export default function App() {
   const [editingCard, setEditingCard] = useState<InventoryCard | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation>(null);
   const [isStewardOpen, setIsStewardOpen] = useState(false);
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
 
   const filteredCards = useMemo(
     () => filterCards(inventory.cards, search, filters),
@@ -94,6 +96,18 @@ export default function App() {
               />
               <div className="collection-actions">
                 <button
+                  className="button primary"
+                  type="button"
+                  disabled={inventory.cards.length === 0}
+                  onClick={() => {
+                    setIsStewardOpen(false);
+                    setIsQueueOpen(true);
+                  }}
+                >
+                  <PackageOpen size={18} />
+                  Prepare Cardmarket queue
+                </button>
+                <button
                   className="button secondary"
                   type="button"
                   disabled={inventory.cards.length === 0}
@@ -135,7 +149,7 @@ export default function App() {
             )}
           </section>
 
-          {!isStewardOpen ? (
+          {!isStewardOpen && !isQueueOpen ? (
             <aside className="steward-launch-panel" aria-label="Steward AI">
               <div className="steward-launch-icon">
                 <Bot size={22} />
@@ -151,7 +165,10 @@ export default function App() {
                 className="button primary steward-launch-button"
                 type="button"
                 disabled={inventory.cards.length === 0}
-                onClick={() => setIsStewardOpen(true)}
+                onClick={() => {
+                  setIsQueueOpen(false);
+                  setIsStewardOpen(true);
+                }}
               >
                 <Bot size={18} />
                 Open Steward AI
@@ -213,6 +230,14 @@ export default function App() {
             }
             onUndo={inventory.undoLatestStewardAction}
             onExportCollection={inventory.exportCollection}
+          />
+          <CardmarketQueueDrawer
+            isOpen={isQueueOpen}
+            collection={inventory.activeCollection}
+            cards={inventory.cards}
+            filteredCards={filteredCards}
+            selectedCardIds={selectedCardIds}
+            onClose={() => setIsQueueOpen(false)}
           />
         </>
       ) : null}

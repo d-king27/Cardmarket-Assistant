@@ -23,7 +23,8 @@ export const manaboxHeaders = [
 ] as const;
 
 const requiredHeaders = ["Name", "Set code", "Collector number", "Quantity"];
-const knownHeaderSet = new Set<string>(manaboxHeaders);
+const managerHeaders = ["Target price", "Price", "Notes"] as const;
+const knownHeaderSet = new Set<string>([...manaboxHeaders, ...managerHeaders]);
 
 export interface ParseInventoryResult {
   cards: InventoryCard[];
@@ -91,6 +92,11 @@ function rowToCard(
   const issues: ValidationIssue[] = [];
   const quantity = parseInteger(row.Quantity, "quantity", issues);
   const purchasePrice = parseNullableDecimal(row["Purchase price"], "purchasePrice", issues);
+  const targetPrice = parseNullableDecimal(
+    row["Target price"] || row.Price,
+    "targetPrice",
+    issues,
+  );
   const misprint = parseBoolean(row.Misprint, "misprint", issues);
   const altered = parseBoolean(row.Altered, "altered", issues);
   const unknownColumns = Object.fromEntries(
@@ -117,8 +123,8 @@ function rowToCard(
     condition: value(row.Condition),
     language: value(row.Language),
     addedAt: nullable(row.Added),
-    targetPrice: null,
-    notes: "",
+    targetPrice,
+    notes: value(row.Notes),
     validationIssues: issues,
     unknownColumns,
     updatedAt: new Date().toISOString(),

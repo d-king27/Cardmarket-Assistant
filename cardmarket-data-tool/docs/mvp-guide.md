@@ -41,6 +41,7 @@ Collector numbers are always kept as strings.
 Unknown columns are reported during import and preserved internally where practical, but the current table and export flow focus on the standard ManaBox columns plus:
 
 - `Target price`
+- `Price` as an import alias for target price
 - `Notes`
 
 ## Collections
@@ -69,8 +70,26 @@ Stored locally:
 - notes
 - edit timestamps
 - Steward AI audit entries
+- published Cardmarket queue manifests and CSV files under the configured local runtime directory
 
 The app does not use cloud storage.
+
+## Cardmarket Queue
+
+`Prepare Cardmarket queue` provides the primary deterministic batching workflow.
+It does not require AI.
+
+- Records are grouped by set identity and rarity.
+- Batches default to 75 rows and cannot exceed 100.
+- The source collection remains unchanged.
+- A positive target price is required.
+- Purchase price is never used as a listing-price fallback.
+- Etched cards are blocked until the extension supports them safely.
+- Blocked rows must be corrected or explicitly excluded.
+- Published jobs survive application restarts.
+
+See [Cardmarket queue guide](cardmarket-queue.md) for the full workflow and
+manifest format.
 
 ## Export
 
@@ -97,6 +116,7 @@ Invalid rows remain visible so they can be inspected and corrected.
 ## Known Limitations
 
 - Steward execution currently focuses on the primary collection-splitting workflow.
+- Queue publishing does not yet launch Chrome, attach Playwright, or communicate with the browser extension.
 - Unknown imported columns are not included in the current table UI.
 - Duplicate rows are flagged for manual review but are not merged automatically.
 - Editing is focused on common inventory fields: quantity, condition, language, purchase price, currency, target price, and notes.

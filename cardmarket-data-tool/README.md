@@ -1,8 +1,11 @@
 # ManaBox CSV Manager
 
-ManaBox CSV Manager is a local-first MVP for importing, reviewing, editing, splitting, and exporting ManaBox CSV collections.
+ManaBox CSV Manager is a local-first MVP for importing, reviewing, editing, splitting, queueing, and exporting ManaBox CSV collections.
 
-The core workflow is simple: import a ManaBox CSV, manage one or more local collections, use Steward AI to break large inventories into smaller Cardmarket bulk-upload-friendly collections, then export the generated CSV files.
+The primary workflow is deterministic: import a ManaBox CSV, add listing target
+prices, preview Cardmarket-safe batches, and publish a durable local queue.
+Steward AI remains an optional planning interface and is not required for queue
+preparation.
 
 The app stores collection data in your browser. It does not scrape Cardmarket, fetch live prices, require user accounts, or send full card records to a remote database.
 
@@ -14,7 +17,7 @@ The app stores collection data in your browser. It does not scrape Cardmarket, f
 npm install
 ```
 
-### 2. Add Steward AI config
+### 2. Optional: add Steward AI config
 
 Create a private `.env` file in the project root:
 
@@ -25,7 +28,9 @@ ANTHROPIC_MODEL=claude-sonnet-4-20250514
 
 You can also copy `.env.example` and fill in the values.
 
-Never commit `.env`. The browser does not read these values; they are only used by the local Node server.
+Skip this step when only using the deterministic Cardmarket queue. Never commit
+`.env`. The browser does not read these values; they are only used by the local
+Node server.
 
 ### 3. Run the app
 
@@ -50,7 +55,16 @@ Export a collection from ManaBox, then drop the `.csv` file into the import box.
 
 Each import creates a separate local collection. The first import becomes the main collection by default.
 
-### 5. Use Steward AI
+### 5. Prepare a Cardmarket queue
+
+Add a positive `Target price` to each record you want to list, then select
+`Prepare Cardmarket queue`.
+
+The app previews validation issues and deterministic set-and-rarity batches.
+Published jobs are written under the monorepo `.runtime/jobs` directory by
+default.
+
+### 6. Optional: use Steward AI
 
 Use the bottom Steward AI dock to open the sidebar. The main MVP use case is:
 
@@ -79,6 +93,9 @@ Included:
 - collection copy/delete
 - table filtering, editing, and removal
 - active collection CSV export
+- deterministic Cardmarket queue preview and publishing
+- versioned queue manifests and file fingerprints
+- explicit blocking of missing listing prices and unsupported finishes
 - Steward AI planning for collection splitting
 - approval before changes are applied
 - audit trail and undo for Steward-created collections

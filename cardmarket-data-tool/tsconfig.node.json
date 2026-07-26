@@ -11,5 +11,13 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts"]
+  "include": [
+    "vite.config.ts",
+    "vite.config.mjs",
+    "server/cardmarketJobRoute.ts",
+    "server/cardmarketJobStore.ts",
+    "server/cardmarketJobStore.test.ts",
+    "src/cardmarket/**/*.ts",
+    "src/models/**/*.ts"
+  ]
 }

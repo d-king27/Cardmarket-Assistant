@@ -58,6 +58,107 @@ textarea {
   box-shadow: -16px 0 40px rgba(21, 35, 28, 0.18);
 }
 
+.queue-drawer {
+  width: min(620px, 100%);
+}
+
+.queue-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.queue-summary-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #dbe2dc;
+  border-radius: 8px;
+  background: #f8fbf9;
+  color: #4f665b;
+}
+
+.queue-summary-item strong {
+  color: #173829;
+  font-size: 1.4rem;
+}
+
+.queue-summary-item.error {
+  border-color: #efb4af;
+  background: #fff4f3;
+}
+
+.queue-summary-item.error strong {
+  color: #9f2b2b;
+}
+
+.queue-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: #4c6257;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.queue-checkbox input {
+  margin-top: 3px;
+}
+
+.queue-batch-list,
+.queue-issue-list,
+.queue-job-list {
+  display: grid;
+  gap: 8px;
+}
+
+.queue-issue {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.queue-issue span,
+.queue-job-list small {
+  color: #586f64;
+  font-size: 0.82rem;
+}
+
+.queue-issues.error {
+  border-color: #efb4af;
+  background: #fff7f6;
+  color: #8a2929;
+}
+
+.queue-issues.warning {
+  border-color: #ead48f;
+  background: #fffaf0;
+  color: #76590b;
+}
+
+.queue-ready,
+.queue-published {
+  border-color: #acd2ba;
+  background: #f2faf5;
+  color: #216445;
+}
+
+.queue-published code,
+.queue-job-list code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.queue-jobs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .privacy-note {
   margin: 0;
   padding: 12px;
@@ -830,6 +931,10 @@ tbody tr:hover {
   .filters-panel,
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .queue-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .steward-launch-panel {

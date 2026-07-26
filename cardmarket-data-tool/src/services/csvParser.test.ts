@@ -37,6 +37,19 @@ describe("parseManaBoxCsv", () => {
     expect(result.cards[0].purchasePrice).toBeNull();
   });
 
+  it("imports optional target price and notes fields for queue preparation", () => {
+    const [headers, row] = validCsv.split("\n");
+    const csv = [
+      `${headers},Target price,Notes`,
+      `${row},4.75,"Cardmarket listing price"`,
+    ].join("\n");
+    const result = parseManaBoxCsv(csv);
+
+    expect(result.cards[0].targetPrice).toBe(4.75);
+    expect(result.cards[0].notes).toBe("Cardmarket listing price");
+    expect(result.unknownHeaders).not.toContain("Target price");
+  });
+
   it("rejects an invalid quantity while retaining the row", () => {
     const csv = validCsv.replace(",1,113902,", ",x,113902,");
     const result = parseManaBoxCsv(csv);

@@ -5,6 +5,7 @@ This directory keeps the longer project notes out of the GitHub landing page whi
 ## User And MVP Docs
 
 - [MVP guide](mvp-guide.md): supported import/export behaviour, local data model, validation, and known limitations.
+- [Cardmarket queue guide](cardmarket-queue.md): deterministic batching, blocking rules, local job storage, and generated manifests.
 - [Steward AI guide](steward-ai.md): how the agent workflow works, what is sent to Anthropic, approval/undo behaviour, and current Phase 2 boundaries.
 
 ## Proposals

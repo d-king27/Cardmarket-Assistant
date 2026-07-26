@@ -1,4 +1,6 @@
 import { createServer } from "node:http";
+import type { IncomingMessage } from "node:http";
+import { handleCardmarketJobRequest } from "./cardmarketJobRoute";
 import { loadProjectEnv } from "./stewardConfig";
 import { handleStewardPlan } from "./stewardRoute";
 
@@ -8,10 +10,11 @@ const port = Number(process.env.STEWARD_SERVER_PORT ?? 5174);
 
 const server = createServer(async (request, response) => {
   response.setHeader("Content-Type", "application/json");
+  const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
 
-  if (request.method === "POST" && request.url === "/api/steward/plan") {
+  if (request.method === "POST" && pathname === "/api/steward/plan") {
     try {
-      const body = await readJsonBody(request);
+      const body = await readJsonBody(request, 128_000);
       const result = await handleStewardPlan(body);
       response.statusCode = result.status;
       response.end(JSON.stringify(result.body));
@@ -22,7 +25,24 @@ const server = createServer(async (request, response) => {
     return;
   }
 
-  if (request.method === "GET" && request.url === "/api/health") {
+  if (pathname === "/api/cardmarket/jobs" || pathname.startsWith("/api/cardmarket/jobs/")) {
+    try {
+      const body = request.method === "POST" ? await readJsonBody(request, 10_000_000) : undefined;
+      const result = await handleCardmarketJobRequest({
+        method: request.method ?? "GET",
+        pathname,
+        body,
+      });
+      response.statusCode = result.status;
+      response.end(JSON.stringify(result.body));
+    } catch (error) {
+      response.statusCode = error instanceof RequestBodyError ? error.status : 400;
+      response.end(JSON.stringify({ message: error instanceof Error ? error.message : "Invalid request." }));
+    }
+    return;
+  }
+
+  if (request.method === "GET" && pathname === "/api/health") {
     response.statusCode = 200;
     response.end(JSON.stringify({ ok: true }));
     return;
@@ -32,27 +52,51 @@ const server = createServer(async (request, response) => {
   response.end(JSON.stringify({ message: "Not found." }));
 });
 
-server.listen(port, () => {
-  console.log(`CSV Steward server listening on http://localhost:${port}`);
+server.listen(port, "127.0.0.1", () => {
+  console.log(`Cardmarket Assistant server listening on http://127.0.0.1:${port}`);
 });
 
-function readJsonBody(request: Parameters<typeof createServer>[0] extends (req: infer Req, res: never) => unknown ? Req : never): Promise<unknown> {
+function readJsonBody(
+  request: IncomingMessage,
+  maximumBytes: number,
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let body = "";
+    let settled = false;
     request.on("data", (chunk) => {
+      if (settled) return;
       body += String(chunk);
-      if (body.length > 128_000) {
-        reject(new Error("Payload too large."));
+      if (Buffer.byteLength(body, "utf8") > maximumBytes) {
+        settled = true;
+        reject(new RequestBodyError("Request payload is too large.", 413));
         request.destroy();
       }
     });
     request.on("end", () => {
+      if (settled) return;
       try {
+        settled = true;
         resolve(body ? JSON.parse(body) : {});
       } catch (caught) {
-        reject(caught);
+        settled = true;
+        reject(new RequestBodyError("Invalid JSON request.", 400, { cause: caught }));
       }
     });
-    request.on("error", reject);
+    request.on("error", (error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    });
   });
+}
+
+class RequestBodyError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+    this.name = "RequestBodyError";
+  }
 }
