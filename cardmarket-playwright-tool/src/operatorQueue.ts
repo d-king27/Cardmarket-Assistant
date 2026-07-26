@@ -77,6 +77,9 @@ export async function runOperatorQueue(input: {
 
       stdout.write(
         `▶ RUN ${index + 1}/${candidates.length}: ${item.fileName}\n` +
+          (item.source?.kind === "queue-job"
+            ? `  Job: ${item.source.jobId}\n  Batch: ${item.source.batchId}\n`
+            : "") +
           `  Set: ${item.target === undefined ? "unknown" : formatTargetSet(item.target)}\n` +
           `  Rarity: ${item.target?.rarity ?? "unknown"}\n` +
           `  Rows: ${item.validation?.rowCount ?? 0}\n` +

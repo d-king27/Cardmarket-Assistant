@@ -45,6 +45,26 @@ The Playwright companion imports these schemas through its existing
 `src/types.ts` facade. The extension exposes them from
 `src/shared/contracts.ts`, ready for the runtime message handler milestone.
 
+## Queue Consumer Boundary
+
+The Playwright companion reads `<monorepo>/.runtime/jobs` directly. Before a
+batch is listed as actionable it verifies:
+
+- the job directory and manifest are regular, non-symlinked paths;
+- the directory name matches the manifest job ID;
+- the manifest validates against the shared queue version;
+- batch IDs, sequences, and filenames are unique;
+- manifest filenames cannot escape the job's `csv` directory;
+- no undeclared CSV files exist;
+- each CSV's SHA-256 fingerprint, row count, quantity total, set, and rarity
+  match its manifest entry.
+
+Atomic `.staging-*` directories are ignored. An invalid job remains visible in
+`npm run jobs` but contributes no files to the processing plan.
+
+If `CARDMARKET_RUNTIME_DIR` is set, use an absolute path so the data tool and
+companion resolve the same directory regardless of their working directories.
+
 ## Local Package Links
 
 The data and Playwright tools use npm `file:` dependencies. The extension uses a

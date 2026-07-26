@@ -11,6 +11,7 @@
     "check": "tsc --noEmit",
     "build": "tsc",
     "test": "tsx --test tests/**/*.test.ts",
+    "jobs": "tsx src/index.ts jobs",
     "plan": "tsx src/index.ts plan",
     "queue": "tsx src/index.ts queue",
     "status": "tsx src/index.ts status",

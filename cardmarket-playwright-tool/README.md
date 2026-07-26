@@ -11,7 +11,9 @@ under the operator's control.
 
 The companion owns the desktop-side queue:
 
-- Scan a directory of prebuilt CSV files before opening Cardmarket.
+- Discover jobs published under the monorepo `.runtime/jobs` directory.
+- Validate each manifest with the shared versioned contract.
+- Verify job identity, safe paths, CSV metadata, and exact SHA-256 fingerprints.
 - Validate that every CSV represents one set and one rarity.
 - Order files deterministically by filename.
 - Create a durable JSON processing plan.
@@ -24,7 +26,7 @@ It does not create, split, price, match, fill, or submit card listings.
 ## Setup
 
 ```powershell
-cd "C:\Users\Dan\Documents\Codex\cardmarket-playwright-tool"
+cd "C:\Users\Dan\Documents\Codex\Cardmarket-Assistant\cardmarket-playwright-tool"
 npm install
 ```
 
@@ -36,14 +38,46 @@ Install the unpacked extension in normal Chrome:
 4. Select:
 
    ```text
-   C:\Users\Dan\Documents\Codex\cardmarket-bulk-import_BrowserExtend\.output\chrome-mv3
+   C:\Users\Dan\Documents\Codex\Cardmarket-Assistant\cardmarket-bulk-import-browser-tool\.output\chrome-mv3
    ```
 
 Use normal Chrome for Cardmarket. Do not use the old Playwright-created profile.
 
-## CSV inbox
+## Shared queue
 
-The default drop directory is:
+The data tool publishes immutable jobs to:
+
+```text
+<monorepo>\.runtime\jobs\<job-id>\
+  manifest.json
+  csv\
+  results\
+```
+
+The companion uses `<monorepo>\.runtime` by default. Both applications also
+honour `CARDMARKET_RUNTIME_DIR`. Use an absolute path for that override so both
+applications resolve it identically.
+
+List and validate every published job without creating or changing a processing
+plan:
+
+```powershell
+npm run jobs
+```
+
+Select one job or a non-default runtime when needed:
+
+```powershell
+npm run jobs -- --job "job-2026-07-26-example"
+npm run jobs -- --runtime-dir "D:\cardmarket-runtime"
+```
+
+Invalid manifests and changed, missing, unexpected, or metadata-mismatched CSVs
+remain visible in this report but are never added to an actionable plan.
+
+## Legacy CSV inbox
+
+Standalone CSV directories remain supported for manual or legacy workflows:
 
 ```text
 inbox\
@@ -85,26 +119,40 @@ A CSV containing multiple set codes, set names, or rarities is invalid. Invalid
 files remain visible in the plan with an error note; they are never silently
 ignored.
 
-## 1. Build the processing plan
+## 1. List the published jobs
 
 Before opening Cardmarket, run:
+
+```powershell
+npm run jobs
+```
+
+## 2. Build the processing plan
+
+By default this reads every validated, ready job from the shared runtime:
 
 ```powershell
 npm run plan
 ```
 
-This scans `inbox/` and writes:
+It writes:
 
 ```text
 reports\processing-plan.json
 ```
 
-Use another directory or plan path when needed:
+Use one job or another plan path when needed:
 
 ```powershell
 npm run plan -- `
-  --input-dir "C:\path\to\ready-csvs" `
+  --job "job-2026-07-26-example" `
   --plan ".\reports\my-processing-plan.json"
+```
+
+To use the previous standalone-directory workflow:
+
+```powershell
+npm run plan -- --input-dir "C:\path\to\ready-csvs"
 ```
 
 The console output is intentionally test-like:
@@ -121,7 +169,7 @@ Rescanning preserves the history of files whose filename and content fingerprint
 are unchanged. Changing a file creates a new pending queue item. A previously
 interrupted `running` item is safely recovered to `pending`.
 
-## 2. Review plan status
+## 3. Review plan status
 
 ```powershell
 npm run status
@@ -135,7 +183,7 @@ npm run status -- --plan ".\reports\my-processing-plan.json"
 
 This command is read-only.
 
-## 3. Run the operator queue
+## 4. Run the operator queue
 
 Open normal Chrome yourself, sign into Cardmarket, and confirm the extension is
 installed. Then start the queue:
@@ -216,6 +264,8 @@ npm run plan -- --help
 - The companion does not launch Cardmarket or bypass Cloudflare.
 - No localhost HTTP or WebSocket command server is exposed.
 - No CSV is automatically treated as successful.
+- Only batches whose manifest, path, metadata, quantity totals, and SHA-256
+  fingerprints agree are actionable.
 - `FILL PAGE!` and final Cardmarket submission remain manual.
 - Generated plans and dropped CSVs are ignored by Git.
 

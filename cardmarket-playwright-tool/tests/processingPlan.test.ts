@@ -94,3 +94,33 @@ test("does not carry history across different input directories", () => {
     /belongs to .*drop-one.*not .*drop-two/i,
   );
 });
+
+test("keeps identical batches from different queue jobs independent", () => {
+  const first = pendingItem();
+  first.source = {
+    kind: "queue-job",
+    jobId: "job-first",
+    batchId: "batch-001",
+    manifestPath: "C:\\runtime\\jobs\\job-first\\manifest.json",
+  };
+  const original = createOrRefreshProcessingPlan({
+    inputDirectory: "C:\\runtime",
+    scannedItems: [first],
+  });
+  original.items[0]!.status = "succeeded";
+
+  const second = pendingItem();
+  second.source = {
+    kind: "queue-job",
+    jobId: "job-second",
+    batchId: "batch-001",
+    manifestPath: "C:\\runtime\\jobs\\job-second\\manifest.json",
+  };
+  const refreshed = createOrRefreshProcessingPlan({
+    inputDirectory: "C:\\runtime",
+    scannedItems: [second],
+    previousPlan: original,
+  });
+
+  assert.equal(refreshed.items[0]?.status, "pending");
+});

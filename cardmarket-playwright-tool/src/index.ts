@@ -10,10 +10,15 @@ import {
   loadProcessingPlanIfPresent,
   saveProcessingPlan,
 } from "./processingPlan.js";
+import {
+  formatQueueRuntimeScan,
+  scanQueueRuntime,
+} from "./queueJobScanner.js";
 import { scanCsvDirectory } from "./queueScanner.js";
+import type { ProcessingPlanItem } from "./queueTypes.js";
 
-const DEFAULT_INPUT_DIRECTORY = "inbox";
 const DEFAULT_PLAN_PATH = path.join("reports", "processing-plan.json");
+const DEFAULT_RUNTIME_DIRECTORY = path.join("..", ".runtime");
 
 async function main(): Promise<void> {
   const cli = parseCliArguments(process.argv.slice(2));
@@ -24,12 +29,51 @@ async function main(): Promise<void> {
   }
 
   const planPath = path.resolve(cli.planPath ?? DEFAULT_PLAN_PATH);
+  const runtimeDirectory = path.resolve(
+    cli.runtimeDir ??
+      process.env.CARDMARKET_RUNTIME_DIR ??
+      DEFAULT_RUNTIME_DIRECTORY,
+  );
+
+  if (cli.command === "jobs") {
+    if (cli.inputDir !== undefined) {
+      throw new Error("The jobs command does not accept --input-dir");
+    }
+    const scan = await scanQueueRuntime(runtimeDirectory, {
+      ...(cli.jobId === undefined ? {} : { jobId: cli.jobId }),
+    });
+    process.stdout.write(formatQueueRuntimeScan(scan));
+    return;
+  }
 
   if (cli.command === "plan") {
-    const inputDirectory = path.resolve(
-      cli.inputDir ?? DEFAULT_INPUT_DIRECTORY,
-    );
-    const scannedItems = await scanCsvDirectory(inputDirectory);
+    if (cli.inputDir !== undefined && cli.jobId !== undefined) {
+      throw new Error("--job cannot be combined with --input-dir");
+    }
+
+    let inputDirectory: string;
+    let scannedItems: ProcessingPlanItem[];
+    if (cli.inputDir !== undefined) {
+      inputDirectory = path.resolve(cli.inputDir);
+      scannedItems = await scanCsvDirectory(inputDirectory);
+    } else {
+      const scan = await scanQueueRuntime(runtimeDirectory, {
+        ...(cli.jobId === undefined ? {} : { jobId: cli.jobId }),
+      });
+      process.stdout.write(formatQueueRuntimeScan(scan));
+      if (scan.jobs.length === 0) {
+        throw new Error(
+          "No queue jobs were found. Publish a job in the data tool or use --input-dir for a legacy CSV directory.",
+        );
+      }
+      if (scan.actionableItems.length === 0) {
+        throw new Error(
+          "No validated batches are available to add to a processing plan.",
+        );
+      }
+      inputDirectory = scan.runtimeDirectory;
+      scannedItems = scan.actionableItems;
+    }
     const previousPlan = await loadProcessingPlanIfPresent(planPath);
     const plan = createOrRefreshProcessingPlan({
       inputDirectory,

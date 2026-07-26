@@ -29,10 +29,27 @@ export const QueueTargetSchema = z
 export const QueueValidationSchema = z
   .object({
     rowCount: z.number().int().positive(),
+    totalQuantity: z.number().int().positive().optional(),
     headers: z.array(z.string()),
     metadataSource: z.enum(["columns", "filename", "mixed"]),
   })
   .strict();
+
+export const QueueItemSourceSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("inbox"),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("queue-job"),
+      jobId: z.string().trim().min(1),
+      batchId: z.string().trim().min(1),
+      manifestPath: z.string().trim().min(1),
+    })
+    .strict(),
+]);
 
 export const ProcessingPlanItemSchema = z
   .object({
@@ -45,6 +62,7 @@ export const ProcessingPlanItemSchema = z
     target: QueueTargetSchema.optional(),
     validation: QueueValidationSchema.optional(),
     validationError: z.string().optional(),
+    source: QueueItemSourceSchema.optional(),
     notes: z.array(ProcessingNoteSchema),
   })
   .strict();
@@ -77,6 +95,7 @@ export type QueueItemStatus = z.infer<typeof QueueItemStatusSchema>;
 export type ProcessingNote = z.infer<typeof ProcessingNoteSchema>;
 export type QueueTarget = z.infer<typeof QueueTargetSchema>;
 export type QueueValidation = z.infer<typeof QueueValidationSchema>;
+export type QueueItemSource = z.infer<typeof QueueItemSourceSchema>;
 export type ProcessingPlanItem = z.infer<typeof ProcessingPlanItemSchema>;
 export type PlanSummary = z.infer<typeof PlanSummarySchema>;
 export type ProcessingPlan = z.infer<typeof ProcessingPlanSchema>;

@@ -42,3 +42,12 @@ corepack yarn install
 See [Shared Contracts](docs/shared-contracts.md) and the
 [Cardmarket Queue](cardmarket-data-tool/docs/cardmarket-queue.md) for the current
 integration boundary and validation commands.
+
+After publishing a queue job in the data tool:
+
+```powershell
+cd cardmarket-playwright-tool
+npm run jobs
+npm run plan
+npm run queue
+```

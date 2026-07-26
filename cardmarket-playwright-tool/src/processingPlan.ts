@@ -29,6 +29,13 @@ export function summarizeItems(items: ProcessingPlanItem[]): PlanSummary {
   };
 }
 
+function historyKey(item: ProcessingPlanItem): string {
+  if (item.source?.kind === "queue-job") {
+    return `${item.source.jobId}\0${item.source.batchId}\0${item.fingerprint}`;
+  }
+  return `${item.fileName}\0${item.fingerprint}`;
+}
+
 export async function loadProcessingPlan(
   planPath: string,
 ): Promise<ProcessingPlan> {
@@ -88,13 +95,13 @@ export function createOrRefreshProcessingPlan(input: {
   const now = new Date().toISOString();
   const previousByFingerprint = new Map(
     input.previousPlan?.items.map((item) => [
-      `${item.fileName}\0${item.fingerprint}`,
+      historyKey(item),
       item,
     ]) ?? [],
   );
   const items = input.scannedItems.map((scannedItem) => {
     const previous = previousByFingerprint.get(
-      `${scannedItem.fileName}\0${scannedItem.fingerprint}`,
+      historyKey(scannedItem),
     );
 
     if (previous === undefined || scannedItem.status === "invalid") {
@@ -187,6 +194,9 @@ export function formatPlan(plan: ProcessingPlan): string {
     lines.push(
       `${statusSymbol(item)} ${String(index + 1).padStart(2, "0")} ${item.status.toUpperCase().padEnd(9)} ${item.fileName} — ${target}`,
     );
+    if (item.source?.kind === "queue-job") {
+      lines.push(`     job: ${item.source.jobId} | batch: ${item.source.batchId}`);
+    }
     const lastNote = item.notes.at(-1);
     if (lastNote !== undefined) {
       lines.push(`     note: ${lastNote.message}`);

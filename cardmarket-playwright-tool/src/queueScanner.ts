@@ -6,6 +6,7 @@ import { parse } from "csv-parse/sync";
 
 import type {
   ProcessingPlanItem,
+  QueueItemSource,
   QueueTarget,
   QueueValidation,
 } from "./queueTypes.js";
@@ -15,6 +16,21 @@ type CsvRow = Record<string, string>;
 interface FilenameTags {
   setTag?: string;
   rarity?: string;
+}
+
+export interface ExpectedQueueBatch {
+  batchId: string;
+  fingerprint: string;
+  rowCount: number;
+  totalQuantity: number;
+  setCode: string;
+  setName: string;
+  rarity: string;
+}
+
+export interface ScanCsvFileOptions {
+  expected?: ExpectedQueueBatch;
+  source?: QueueItemSource;
 }
 
 function normalize(value: string): string {
@@ -122,6 +138,7 @@ function validateFile(
     throw new Error("CSV must contain Name and Quantity (or Amount) columns");
   }
 
+  let totalQuantity = 0;
   for (const [index, row] of rows.entries()) {
     const rowNumber = index + 2;
     const name = row[nameHeader]?.trim() ?? "";
@@ -137,6 +154,7 @@ function validateFile(
         `CSV row ${rowNumber} has an invalid ${quantityHeader}: ${quantityText}`,
       );
     }
+    totalQuantity += quantity;
   }
 
   const setCode = uniqueColumnValue(
@@ -216,20 +234,80 @@ function validateFile(
     },
     validation: {
       rowCount: rows.length,
+      totalQuantity,
       headers,
       metadataSource,
     },
   };
 }
 
-async function scanFile(filePath: string): Promise<ProcessingPlanItem> {
+function assertExpectedBatch(
+  expected: ExpectedQueueBatch,
+  actual: {
+    fingerprint: string;
+    target: QueueTarget;
+    validation: QueueValidation;
+  },
+): void {
+  if (actual.fingerprint !== expected.fingerprint) {
+    throw new Error(
+      `CSV fingerprint does not match manifest for batch ${expected.batchId}`,
+    );
+  }
+  if (actual.validation.rowCount !== expected.rowCount) {
+    throw new Error(
+      `CSV row count ${actual.validation.rowCount} does not match manifest row count ${expected.rowCount}`,
+    );
+  }
+  if (actual.validation.totalQuantity !== expected.totalQuantity) {
+    throw new Error(
+      `CSV total quantity ${actual.validation.totalQuantity ?? "unknown"} does not match manifest total quantity ${expected.totalQuantity}`,
+    );
+  }
+  if (
+    actual.target.setCode !== undefined &&
+    normalize(actual.target.setCode) !== normalize(expected.setCode)
+  ) {
+    throw new Error(
+      `CSV set code ${actual.target.setCode} does not match manifest set code ${expected.setCode}`,
+    );
+  }
+  if (
+    actual.target.setName !== undefined &&
+    normalize(actual.target.setName) !== normalize(expected.setName)
+  ) {
+    throw new Error(
+      `CSV set name ${actual.target.setName} does not match manifest set name ${expected.setName}`,
+    );
+  }
+  if (normalize(actual.target.rarity) !== normalize(expected.rarity)) {
+    throw new Error(
+      `CSV rarity ${actual.target.rarity} does not match manifest rarity ${expected.rarity}`,
+    );
+  }
+}
+
+export async function scanCsvFile(
+  filePath: string,
+  options: ScanCsvFileOptions = {},
+): Promise<ProcessingPlanItem> {
   const fileName = path.basename(filePath);
-  const source = await readFile(filePath, "utf8");
-  const fingerprint = createHash("sha256").update(source).digest("hex");
-  const id = `${safeIdPart(fileName) || "csv"}-${fingerprint.slice(0, 10)}`;
+  const contents = await readFile(filePath);
+  const sourceText = contents.toString("utf8");
+  const fingerprint = createHash("sha256").update(contents).digest("hex");
+  const id =
+    options.expected?.batchId ??
+    `${safeIdPart(fileName) || "csv"}-${fingerprint.slice(0, 10)}`;
 
   try {
-    const { target, validation } = validateFile(fileName, source);
+    const { target, validation } = validateFile(fileName, sourceText);
+    if (options.expected !== undefined) {
+      assertExpectedBatch(options.expected, {
+        fingerprint,
+        target,
+        validation,
+      });
+    }
     return {
       id,
       fileName,
@@ -239,6 +317,7 @@ async function scanFile(filePath: string): Promise<ProcessingPlanItem> {
       attempts: 0,
       target,
       validation,
+      ...(options.source === undefined ? {} : { source: options.source }),
       notes: [],
     };
   } catch (error) {
@@ -251,6 +330,7 @@ async function scanFile(filePath: string): Promise<ProcessingPlanItem> {
       status: "invalid",
       attempts: 0,
       validationError: message,
+      ...(options.source === undefined ? {} : { source: options.source }),
       notes: [
         {
           at: new Date().toISOString(),
@@ -290,5 +370,5 @@ export async function scanCsvDirectory(
     throw new Error(`No CSV files found in ${inputDirectory}`);
   }
 
-  return Promise.all(csvPaths.map(scanFile));
+  return Promise.all(csvPaths.map((csvPath) => scanCsvFile(csvPath)));
 }
