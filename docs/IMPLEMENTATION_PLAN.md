@@ -85,6 +85,8 @@ after the standalone extension is reliable.
       - This project should not expose a broad unauthenticated localhost command
         interface.
       - Automatic Cardmarket form submission remains out of scope.
+    - See `docs/PLAYWRIGHT_APP_SETUP_PLAN.md` for the companion app setup
+      plan while it temporarily lives in this repository.
 
 13. Add page-oriented workflow.
     - Show total, visible, ready, filled, another-page, failed, and remaining
@@ -122,4 +124,7 @@ Run after dependency installation and after every behavior-changing commit:
 - `yarn build:firefox`
 
 Use `yarn lint` only when intentionally applying ESLint fixes.
+
+
+
 
