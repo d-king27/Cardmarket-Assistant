@@ -48,7 +48,7 @@ const batch: ListingBatchMessage = {
   records: setBatch.records,
 };
 
-function renderPage(selectedExpansion: string): string {
+function renderPage(selectedExpansion: string, selectedRarity: string): string {
   const selected = (value: string): string =>
     selectedExpansion === value ? " selected" : "";
 
@@ -60,6 +60,11 @@ function renderPage(selectedExpansion: string): string {
     <select id="expansion">
       <option value="tokens"${selected("tokens")}>Aaron Miller Tokens</option>
       <option value="aetherdrift"${selected("aetherdrift")}>Aetherdrift</option>
+    </select>
+    <label for="rarity">Rarity</label>
+    <select id="rarity">
+      <option value="all"${selectedRarity === "all" ? " selected" : ""}>All</option>
+      <option value="rare"${selectedRarity === "rare" ? " selected" : ""}>Rare</option>
     </select>
     <label for="sort">Sort by</label>
     <select id="sort">
@@ -77,7 +82,8 @@ function renderPage(selectedExpansion: string): string {
       window.__fillClicks = 0;
       document.querySelector("#filter").addEventListener("click", () => {
         const expansion = document.querySelector("#expansion").value;
-        window.location.href = "/?expansion=" + encodeURIComponent(expansion);
+        const rarity = document.querySelector("#rarity").value;
+        window.location.href = "/?expansion=" + encodeURIComponent(expansion) + "&rarity=" + encodeURIComponent(rarity);
       });
       document.querySelector("#import").addEventListener("click", () => {
         document.querySelector("#modal-host").innerHTML = \`
@@ -119,7 +125,10 @@ test("navigates to the exact set and stages the extension preview without fillin
   const server = createServer((request, response) => {
     const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
     response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    response.end(renderPage(requestUrl.searchParams.get("expansion") ?? ""));
+    response.end(renderPage(
+      requestUrl.searchParams.get("expansion") ?? "",
+      requestUrl.searchParams.get("rarity") ?? "all",
+    ));
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
@@ -133,12 +142,13 @@ test("navigates to the exact set and stages the extension preview without fillin
   try {
     const page = await browser.newPage();
     const url = `http://127.0.0.1:${address.port}/`;
-    const pageContext = await openCardmarketSetPage(page, url, setBatch);
+    const pageContext = await openCardmarketSetPage(page, url, setBatch, "rare");
 
     assert.equal(pageContext.expansionLabel, "Aetherdrift");
     assert.equal(pageContext.hitCount, 291);
     assert.equal(pageContext.resultsTablePresent, true);
     assert.equal(pageContext.extensionUiPresent, true);
+    assert.equal(await page.getByLabel("Rarity").inputValue(), "rare");
 
     const stagedCsvPath = await stageSetCsv(
       path.resolve("test-results", "staged"),

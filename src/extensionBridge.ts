@@ -26,6 +26,7 @@ export interface ExtensionBridge {
     setBatch: SetBatch;
     stagedCsvPath: string;
     pageContext: CardmarketPageContext;
+    mapSetColumn?: boolean;
   }): Promise<ExtensionDryRunOutcome>;
 }
 
@@ -85,6 +86,7 @@ export class CardmarketCsvImportBridge implements ExtensionBridge {
     setBatch: SetBatch;
     stagedCsvPath: string;
     pageContext: CardmarketPageContext;
+    mapSetColumn?: boolean;
   }): Promise<ExtensionDryRunOutcome> {
     if (!input.pageContext.extensionUiPresent) {
       throw new Error("The extension Import CSV control is not visible");
@@ -118,7 +120,11 @@ export class CardmarketCsvImportBridge implements ExtensionBridge {
     );
     await setColumnMapping(mappingDialog, "Signed Column", "");
     await setColumnMapping(mappingDialog, "Comment Column", "");
-    await setColumnMapping(mappingDialog, "Set Column", SAFE_IMPORT_COLUMNS.set);
+    await setColumnMapping(
+      mappingDialog,
+      "Set Column",
+      input.mapSetColumn === false ? "" : SAFE_IMPORT_COLUMNS.set,
+    );
     await setColumnMapping(mappingDialog, "Foil Column", SAFE_IMPORT_COLUMNS.foil);
     await setColumnMapping(
       mappingDialog,

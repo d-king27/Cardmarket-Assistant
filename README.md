@@ -167,6 +167,38 @@ npm run queue -- --retry-failed
 Success means the operator explicitly confirmed success; the tool does not infer
 submission status from the page.
 
+## Attached Chrome demo
+
+The `demo` command attaches to a normal Chrome instance that you start with a
+remote-debugging port. It uses the first pending CSV in the processing plan to:
+
+1. select the exact expansion;
+2. select the exact rarity;
+3. sort by collector number when available;
+4. click Filter;
+5. upload a safe staged copy through the installed extension;
+6. stop at the extension preview without clicking `FILL PAGE!`.
+
+Start Chrome with an isolated data directory:
+
+```powershell
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" `
+  --remote-debugging-port=9222 `
+  --user-data-dir="C:\Users\Dan\cardmarket-demo-profile"
+```
+
+In that Chrome window, install or enable the extension, complete Cardmarket
+login and any Cloudflare check yourself, then open the Bulk List Cards page.
+Run:
+
+```powershell
+npm run plan
+npm run demo
+```
+
+Chrome remains open at the preview for screenshots and manual review. The demo
+never clicks `FILL PAGE!` or submits a listing.
+
 ## Commands
 
 ```powershell
@@ -187,10 +219,8 @@ npm run plan -- --help
 - `FILL PAGE!` and final Cardmarket submission remain manual.
 - Generated plans and dropped CSVs are ignored by Git.
 
-## Future existing-session mode
+## Attached-session limitation
 
-If the manual queue proves too repetitive, a separate experimental mode can
-attach to a user-started Chrome session. It should reuse this exact processing
-plan and status model, require explicit operator checkpoints, and avoid taking
-ownership of authentication or submission. It must be treated as optional
-because attaching browser automation may still trigger Cloudflare.
+Attached automation may still trigger a Cloudflare response. The command does
+not attempt to bypass it: stop the run, complete any browser check manually,
+and retry only after Cardmarket is usable normally in that Chrome window.

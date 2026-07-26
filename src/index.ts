@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { getHelpText, parseCliArguments } from "./cli.js";
+import { runAttachedDemo } from "./attachedDemo.js";
 import { runOperatorQueue } from "./operatorQueue.js";
 import {
   createOrRefreshProcessingPlan,
@@ -45,6 +46,22 @@ async function main(): Promise<void> {
 
   if (cli.command === "status") {
     process.stdout.write(formatPlan(plan));
+    return;
+  }
+
+  if (cli.command === "demo") {
+    const result = await runAttachedDemo({
+      plan,
+      cdpEndpoint: cli.cdpEndpoint ?? "http://127.0.0.1:9222",
+    });
+    process.stdout.write(
+      `\nPlaywright demo prepared ${result.item.fileName}\n` +
+        `Set: ${result.pageContext.expansionLabel ?? "unknown"}\n` +
+        `Rarity: ${result.item.target?.rarity ?? "unknown"}\n` +
+        `Hits: ${result.pageContext.hitCount ?? "unknown"}\n` +
+        `Extension preview: ${result.preview.selectedCount} selected of ${result.preview.eligibleCount} (${result.preview.parsedCount} total)\n` +
+        "Stopped safely before Fill Page. Chrome remains open for screenshots and review.\n",
+    );
     return;
   }
 

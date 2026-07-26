@@ -13,7 +13,8 @@
     "test": "tsx --test tests/**/*.test.ts",
     "plan": "tsx src/index.ts plan",
     "queue": "tsx src/index.ts queue",
-    "status": "tsx src/index.ts status"
+    "status": "tsx src/index.ts status",
+    "demo": "tsx src/index.ts demo"
   },
   "dependencies": {
     "@playwright/test": "^1.61.1",
