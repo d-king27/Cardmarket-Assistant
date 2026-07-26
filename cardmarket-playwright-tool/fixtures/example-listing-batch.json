@@ -1,0 +1,30 @@
+{
+  "protocolVersion": 1,
+  "type": "listing-batch",
+  "batchId": "example-batch-001",
+  "createdAt": "2026-07-14T10:00:00.000Z",
+  "records": [
+    {
+      "id": "example-record-001",
+      "name": "Lightning Bolt",
+      "quantity": 2,
+      "scryfallId": "e3285e6b-3e79-4d7c-bf96-d920f973b122",
+      "setCode": "M11",
+      "setName": "Magic 2011",
+      "collectorNumber": "149",
+      "language": "English",
+      "condition": "Near Mint",
+      "price": "1.25"
+    },
+    {
+      "id": "example-record-002",
+      "name": "Sol Ring",
+      "quantity": 1,
+      "productId": "example-cardmarket-product-id",
+      "setCode": "CMM",
+      "collectorNumber": "396",
+      "language": "English",
+      "condition": "Excellent"
+    }
+  ]
+}

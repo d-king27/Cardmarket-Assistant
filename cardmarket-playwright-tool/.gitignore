@@ -1,0 +1,8 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+reports/*.json
+reports/**/*.csv
+inbox/*.csv
+.playwright-profile/
