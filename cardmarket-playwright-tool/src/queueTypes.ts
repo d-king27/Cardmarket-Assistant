@@ -51,6 +51,17 @@ export const QueueItemSourceSchema = z.discriminatedUnion("kind", [
     .strict(),
 ]);
 
+export const QueueItemStagingSchema = z
+  .object({
+    stagedAt: z.string(),
+    state: z.enum(["preview-ready", "no-current-page-matches"]),
+    selectedCount: z.number().int().nonnegative(),
+    eligibleCount: z.number().int().nonnegative(),
+    parsedCount: z.number().int().nonnegative(),
+    resultPath: z.string().trim().min(1),
+  })
+  .strict();
+
 export const ProcessingPlanItemSchema = z
   .object({
     id: z.string().trim().min(1),
@@ -63,6 +74,7 @@ export const ProcessingPlanItemSchema = z
     validation: QueueValidationSchema.optional(),
     validationError: z.string().optional(),
     source: QueueItemSourceSchema.optional(),
+    staging: QueueItemStagingSchema.optional(),
     notes: z.array(ProcessingNoteSchema),
   })
   .strict();
@@ -96,6 +108,7 @@ export type ProcessingNote = z.infer<typeof ProcessingNoteSchema>;
 export type QueueTarget = z.infer<typeof QueueTargetSchema>;
 export type QueueValidation = z.infer<typeof QueueValidationSchema>;
 export type QueueItemSource = z.infer<typeof QueueItemSourceSchema>;
+export type QueueItemStaging = z.infer<typeof QueueItemStagingSchema>;
 export type ProcessingPlanItem = z.infer<typeof ProcessingPlanItemSchema>;
 export type PlanSummary = z.infer<typeof PlanSummarySchema>;
 export type ProcessingPlan = z.infer<typeof ProcessingPlanSchema>;

@@ -70,6 +70,7 @@ export async function runOperatorQueue(input: {
     );
 
     for (const [index, item] of candidates.entries()) {
+      const wasStaged = item.staging !== undefined;
       item.status = "running";
       item.attempts += 1;
       addNote(item, "info", `Started operator attempt ${item.attempts}.`);
@@ -84,7 +85,9 @@ export async function runOperatorQueue(input: {
           `  Rarity: ${item.target?.rarity ?? "unknown"}\n` +
           `  Rows: ${item.validation?.rowCount ?? 0}\n` +
           `  File: ${item.filePath}\n` +
-          "  In normal Chrome, navigate to this set and rarity, import the CSV with the extension, review Fill Page, and submit only when you choose.\n",
+          (wasStaged
+            ? `  Extension preview staged at ${item.staging?.stagedAt ?? "unknown time"}. Record the result only after your manual Fill Page, review, and submission decision.\n`
+            : "  In normal Chrome, navigate to this set and rarity, import the CSV with the extension, review Fill Page, and submit only when you choose.\n"),
       );
 
       let choice = "";

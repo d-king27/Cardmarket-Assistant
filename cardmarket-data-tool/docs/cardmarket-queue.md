@@ -96,6 +96,10 @@ The versioned manifest records:
 Later milestones will update processing results without changing the immutable
 source CSV files.
 
+The Playwright companion writes validated attached-browser dry-run results into
+the job's `results` directory. It does not modify the manifest or source CSVs,
+and a dry-run never means the Cardmarket form was filled or submitted.
+
 The runtime manifest schema and queue status values are owned by the monorepo
 package at `packages/cardmarket-contracts`. See
 `docs/shared-contracts.md` from the monorepo root for versioning and validation

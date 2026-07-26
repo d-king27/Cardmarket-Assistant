@@ -13,6 +13,7 @@
     "test": "tsx --test tests/**/*.test.ts",
     "jobs": "tsx src/index.ts jobs",
     "plan": "tsx src/index.ts plan",
+    "stage": "tsx src/index.ts stage",
     "queue": "tsx src/index.ts queue",
     "status": "tsx src/index.ts status",
     "demo": "tsx src/index.ts demo"

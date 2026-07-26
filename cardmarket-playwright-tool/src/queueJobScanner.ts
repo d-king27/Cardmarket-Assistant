@@ -31,6 +31,11 @@ export interface ScanQueueRuntimeOptions {
   jobId?: string;
 }
 
+export interface RevalidatedQueueItem {
+  item: ProcessingPlanItem;
+  manifest: QueueJobManifest;
+}
+
 const JOB_ID_PATTERN = /^job-[a-zA-Z0-9-]+$/;
 
 function resolveDirectChild(parent: string, fileName: string): string {
@@ -324,6 +329,57 @@ export async function scanQueueRuntime(
         : [],
     ),
   };
+}
+
+export async function revalidateQueueJobItem(
+  planItem: ProcessingPlanItem,
+): Promise<RevalidatedQueueItem> {
+  if (planItem.source?.kind !== "queue-job") {
+    throw new Error("Only queue-job items can be revalidated as queue jobs");
+  }
+  const source = planItem.source;
+
+  const manifestPath = path.resolve(source.manifestPath);
+  if (
+    path.basename(manifestPath) !== "manifest.json" ||
+    path.basename(path.dirname(manifestPath)) !== source.jobId
+  ) {
+    throw new Error("Processing-plan queue source does not match its manifest path");
+  }
+
+  const runtimeDirectory = path.dirname(
+    path.dirname(path.dirname(manifestPath)),
+  );
+  const scan = await scanQueueRuntime(runtimeDirectory, {
+    jobId: source.jobId,
+  });
+  const job = scan.jobs[0];
+  if (job === undefined || job.state !== "ready" || job.manifest === undefined) {
+    throw new Error(
+      `Queue job ${source.jobId} is no longer ready: ${job?.error ?? "not found"}`,
+    );
+  }
+
+  const currentItem = scan.actionableItems.find(
+    (candidate) =>
+      candidate.source?.kind === "queue-job" &&
+      candidate.source.batchId === source.batchId,
+  );
+  if (currentItem === undefined) {
+    throw new Error(
+      `Queue batch ${source.batchId} is no longer actionable`,
+    );
+  }
+  if (
+    path.resolve(currentItem.filePath) !== path.resolve(planItem.filePath) ||
+    currentItem.fingerprint !== planItem.fingerprint
+  ) {
+    throw new Error(
+      `Queue batch ${source.batchId} changed after the processing plan was created`,
+    );
+  }
+
+  return { item: currentItem, manifest: job.manifest };
 }
 
 function jobStateSymbol(state: QueueJobDiscoveryState): string {

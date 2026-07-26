@@ -124,3 +124,27 @@ test("keeps identical batches from different queue jobs independent", () => {
 
   assert.equal(refreshed.items[0]?.status, "pending");
 });
+
+test("preserves staging metadata when a queue batch is unchanged", () => {
+  const scanned = pendingItem();
+  const original = createOrRefreshProcessingPlan({
+    inputDirectory: "C:\\runtime",
+    scannedItems: [scanned],
+  });
+  original.items[0]!.staging = {
+    stagedAt: "2026-07-26T12:00:00.000Z",
+    state: "preview-ready",
+    selectedCount: 1,
+    eligibleCount: 1,
+    parsedCount: 1,
+    resultPath: "C:\\runtime\\results\\batch.json",
+  };
+
+  const refreshed = createOrRefreshProcessingPlan({
+    inputDirectory: "C:\\runtime",
+    scannedItems: [pendingItem()],
+    previousPlan: original,
+  });
+
+  assert.equal(refreshed.items[0]?.staging?.state, "preview-ready");
+});

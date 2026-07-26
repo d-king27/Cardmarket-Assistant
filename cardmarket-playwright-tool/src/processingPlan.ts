@@ -113,6 +113,9 @@ export function createOrRefreshProcessingPlan(input: {
         ...scannedItem,
         status: "pending" as const,
         attempts: previous.attempts,
+        ...(previous.staging === undefined
+          ? {}
+          : { staging: previous.staging }),
         notes: [
           ...previous.notes,
           {
@@ -129,6 +132,9 @@ export function createOrRefreshProcessingPlan(input: {
       status: previous.status,
       attempts: previous.attempts,
       notes: previous.notes,
+      ...(previous.staging === undefined
+        ? {}
+        : { staging: previous.staging }),
     };
   });
   const plan: ProcessingPlan = {
@@ -196,6 +202,11 @@ export function formatPlan(plan: ProcessingPlan): string {
     );
     if (item.source?.kind === "queue-job") {
       lines.push(`     job: ${item.source.jobId} | batch: ${item.source.batchId}`);
+    }
+    if (item.staging !== undefined) {
+      lines.push(
+        `     staged: ${item.staging.state} | ${item.staging.selectedCount}/${item.staging.eligibleCount} selected | ${item.staging.resultPath}`,
+      );
     }
     const lastNote = item.notes.at(-1);
     if (lastNote !== undefined) {

@@ -9,6 +9,7 @@ import type { QueueJobManifest } from "@cardmarket-assistant/contracts";
 
 import {
   formatQueueRuntimeScan,
+  revalidateQueueJobItem,
   scanQueueRuntime,
 } from "../src/queueJobScanner.js";
 
@@ -100,7 +101,25 @@ test("discovers and validates a data-tool queue job", async (t) => {
     manifestPath: path.join(runtime, "jobs", jobId, "manifest.json"),
   });
   assert.equal(scan.actionableItems[0]?.validation?.totalQuantity, 2);
+  const revalidated = await revalidateQueueJobItem(
+    scan.actionableItems[0]!,
+  );
+  assert.equal(revalidated.manifest.jobId, jobId);
   assert.match(formatQueueRuntimeScan(scan), /Actionable batches 1/);
+});
+
+test("revalidates the planned fingerprint immediately before browser handoff", async (t) => {
+  const runtime = await createRuntime(t);
+  const jobId = "job-browser-handoff";
+  await writeJob(runtime, manifest(jobId));
+  const initial = await scanQueueRuntime(runtime);
+  const plannedItem = initial.actionableItems[0]!;
+  await writeFile(plannedItem.filePath, CSV.replace("Zahur", "Changed card"));
+
+  await assert.rejects(
+    () => revalidateQueueJobItem(plannedItem),
+    /no longer ready|no longer actionable/i,
+  );
 });
 
 test("rejects a CSV changed after publication", async (t) => {

@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { getHelpText, parseCliArguments } from "./cli.js";
-import { runAttachedDemo } from "./attachedDemo.js";
+import { runAttachedStage } from "./attachedDemo.js";
 import { runOperatorQueue } from "./operatorQueue.js";
 import {
   createOrRefreshProcessingPlan,
@@ -93,18 +93,28 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (cli.command === "demo") {
-    const result = await runAttachedDemo({
+  if (cli.command === "stage" || cli.command === "demo") {
+    const result = await runAttachedStage({
       plan,
+      planPath,
       cdpEndpoint: cli.cdpEndpoint ?? "http://127.0.0.1:9222",
+      selection: {
+        ...(cli.jobId === undefined ? {} : { jobId: cli.jobId }),
+        ...(cli.batchId === undefined ? {} : { batchId: cli.batchId }),
+        retryFailed: cli.retryFailed,
+      },
     });
     process.stdout.write(
-      `\nPlaywright demo prepared ${result.item.fileName}\n` +
+      `\nStaged ${result.item.fileName}\n` +
+        (result.item.source?.kind === "queue-job"
+          ? `Job: ${result.item.source.jobId}\nBatch: ${result.item.source.batchId}\n`
+          : "") +
         `Set: ${result.pageContext.expansionLabel ?? "unknown"}\n` +
         `Rarity: ${result.item.target?.rarity ?? "unknown"}\n` +
         `Hits: ${result.pageContext.hitCount ?? "unknown"}\n` +
         `Extension preview: ${result.preview.selectedCount} selected of ${result.preview.eligibleCount} (${result.preview.parsedCount} total)\n` +
-        "Stopped safely before Fill Page. Chrome remains open for screenshots and review.\n",
+        `Dry-run result: ${result.resultPath}\n` +
+        "Stopped safely before Fill Page. Chrome remains open for manual review.\n",
     );
     return;
   }

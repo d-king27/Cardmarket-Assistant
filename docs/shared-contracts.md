@@ -65,6 +65,26 @@ Atomic `.staging-*` directories are ignored. An invalid job remains visible in
 If `CARDMARKET_RUNTIME_DIR` is set, use an absolute path so the data tool and
 companion resolve the same directory regardless of their working directories.
 
+## Attached Browser Handoff
+
+`npm run stage` connects over CDP to the operator-started persistent Chrome
+profile. Immediately before touching the page, the companion rescans the source
+job and confirms the plan still references the same validated CSV fingerprint.
+
+The companion then:
+
+1. correlates the listing message with the queue batch ID;
+2. selects the exact Cardmarket expansion and rarity;
+3. creates a reduced safe-import CSV under ignored local reports;
+4. uploads it through the installed extension UI;
+5. stops at the extension preview without clicking `FILL PAGE!`;
+6. validates and atomically saves `ListingBatchResultMessage` under the job's
+   `results` directory;
+7. records preview counts and the result path in the processing plan.
+
+The source manifest and CSVs remain immutable. A dry-run result has `not-run`
+status and is not evidence that the operator filled or submitted Cardmarket.
+
 ## Local Package Links
 
 The data and Playwright tools use npm `file:` dependencies. The extension uses a

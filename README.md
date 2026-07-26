@@ -49,5 +49,6 @@ After publishing a queue job in the data tool:
 cd cardmarket-playwright-tool
 npm run jobs
 npm run plan
+npm run stage
 npm run queue
 ```

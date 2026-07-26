@@ -183,7 +183,56 @@ npm run status -- --plan ".\reports\my-processing-plan.json"
 
 This command is read-only.
 
-## 4. Run the operator queue
+## 4. Stage a batch in attached Chrome
+
+The `stage` command attaches to a Chrome session that you start with remote
+debugging enabled. Use the monorepo runtime for its persistent profile so login
+and the unpacked extension survive restarts:
+
+```powershell
+$assistantRoot = (Resolve-Path "..").Path
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" `
+  --remote-debugging-port=9222 `
+  --user-data-dir="$assistantRoot\.runtime\chrome-profile"
+```
+
+The first time this profile opens:
+
+1. install the unpacked extension;
+2. sign into Cardmarket;
+3. complete any Cloudflare check manually;
+4. open Cardmarket's **Bulk List Cards** page.
+
+Then run:
+
+```powershell
+npm run stage
+```
+
+The command revalidates the selected queue job immediately before browser
+interaction, selects the exact expansion and rarity, uploads a reduced safe CSV
+to the extension, and stops at its preview. It never clicks `FILL PAGE!`.
+
+By default it chooses the first pending item without an existing staging record.
+Select or restage one batch explicitly with:
+
+```powershell
+npm run stage -- `
+  --job "job-2026-07-26-example" `
+  --batch "batch-001"
+```
+
+Each dry-run result is written atomically under:
+
+```text
+<monorepo>\.runtime\jobs\<job-id>\results\
+```
+
+The processing plan records the preview counts and result path. A staging result
+does not mark a listing successful. Review the preview, choose whether to use
+`FILL PAGE!`, review the Cardmarket form, and submit only when you decide.
+
+## 5. Record manual outcomes
 
 Open normal Chrome yourself, sign into Cardmarket, and confirm the extension is
 installed. Then start the queue:
@@ -213,39 +262,8 @@ npm run queue -- --retry-failed
 ```
 
 Success means the operator explicitly confirmed success; the tool does not infer
-submission status from the page.
-
-## Attached Chrome demo
-
-The `demo` command attaches to a normal Chrome instance that you start with a
-remote-debugging port. It uses the first pending CSV in the processing plan to:
-
-1. select the exact expansion;
-2. select the exact rarity;
-3. sort by collector number when available;
-4. click Filter;
-5. upload a safe staged copy through the installed extension;
-6. stop at the extension preview without clicking `FILL PAGE!`.
-
-Start Chrome with an isolated data directory:
-
-```powershell
-& "C:\Program Files\Google\Chrome\Application\chrome.exe" `
-  --remote-debugging-port=9222 `
-  --user-data-dir="C:\Users\Dan\cardmarket-demo-profile"
-```
-
-In that Chrome window, install or enable the extension, complete Cardmarket
-login and any Cloudflare check yourself, then open the Bulk List Cards page.
-Run:
-
-```powershell
-npm run plan
-npm run demo
-```
-
-Chrome remains open at the preview for screenshots and manual review. The demo
-never clicks `FILL PAGE!` or submits a listing.
+submission status from the page. The older `demo` command remains as a
+compatibility alias for `stage`.
 
 ## Commands
 
@@ -254,6 +272,7 @@ npm run check
 npm test
 npm run build
 npm run plan -- --help
+npm run stage -- --help
 ```
 
 ## Safety boundaries
@@ -266,6 +285,9 @@ npm run plan -- --help
 - No CSV is automatically treated as successful.
 - Only batches whose manifest, path, metadata, quantity totals, and SHA-256
   fingerprints agree are actionable.
+- Queue data is revalidated immediately before attached-browser staging.
+- Attached staging writes results only inside the job's dedicated `results`
+  directory and never changes its manifest or source CSVs.
 - `FILL PAGE!` and final Cardmarket submission remain manual.
 - Generated plans and dropped CSVs are ignored by Git.
 
