@@ -1,0 +1,120 @@
+{
+    "popup": {
+        "title": "Cardmarket Bulk Import",
+        "panels": {
+            "instructions": {
+                "button": "How to use",
+                "title": "How to use",
+                "step_1_a": "Navigate to the \"Bulk List Cards\" and filter by the set you want to upload cards from. ",
+                "step_1_b": "Here",
+                "step_1_c": "'s a quick link!",
+                "step_2": "Press the \"Import CSV...\" button injected by this extension. It should be right below the \"Bulk Modification\" menu.",
+                "step_3": "Select your file and match the columns in the CSV to the columns in Cardmarket.",
+                "step_4": "Press \"SELECT ROWS\" and select which rows to fill from the CSV (up to 100).",
+                "step_5": "Press \"FILL PAGE!\". The extension will automatically fill in the table with the selected rows!"
+            },
+            "reportIssue": {
+                "button": "Report an issue",
+                "title": "Report an issue",
+                "github_a": "If you've found a problem while using this extension you can report it in the ",
+                "github_b": "Github issues",
+                "github_c": ".",
+                "github_d": "Please make sure to include the name of the browser where you found the issue, and the version you are using ",
+                "github_e": "."
+            },
+            "aboutMe": {
+                "button": "About",
+                "title": "About",
+                "header": "Cardmarket Bulk Import extension",
+                "subheader": "by PedroPerpetua",
+                "website": "My website: ",
+                "github": "Public repository: ",
+                "cardmarket": "My seller's account: ",
+                "kofi": "Like my work?",
+                "kofi_subtitle_1": "A donation is completely optional.",
+                "kofi_subtitle_2": "This extension is 100% free."
+            },
+            "disclaimer_a": "Not affiliated or endorsed by Cardmarket.",
+            "disclaimer_b": "Use at own risk."
+        }
+    },
+    "injectedButton": {
+        "button": "Import CSV...",
+        "modal": {
+            "title": "Import listings from CSV",
+            "importCsvForm": {
+                "submit": "Select rows",
+                "error": "An unknown error occurred parsing this file. Please make sure the CSV is correctly formatted."
+            },
+            "selectRowsForm": {
+                "min": "You must select at least 1 row!",
+                "max": "You can select at most 100 rows!",
+                "count_a": " selected of ",
+                "count_b": " (",
+                "count_c": " total)",
+                "showDisabled": "Show disabled",
+                "nameMatchedWarning": "This item does not meet all form requirements, but may still be filled",
+                "nameMatchedTooltip": "This item has been matched to this row",
+                "submit": "Fill page!"
+            },
+            "successAlert_a": " row(s) filled successfully."
+        },
+        "gameManagers": {
+            "common": {
+                "importCsvForm": {
+                    "files": {
+                        "label": "CSV File",
+                        "required": "You must upload a file.",
+                        "invalid": "Could not parse this file."
+                    },
+                    "name": {
+                        "label": "Name Column",
+                        "required": "You must select a column"
+                    },
+                    "language": {
+                        "label": "Language Column"
+                    },
+                    "condition": {
+                        "label": "Condition Column"
+                    },
+                    "isSigned": {
+                        "label": "Signed Column"
+                    },
+                    "comment": {
+                        "label": "Comment Column"
+                    },
+                    "quantity": {
+                        "label": "Quantity Column"
+                    },
+                    "price": {
+                        "label": "Price Column"
+                    }
+                },
+                "selectRowsFormTable": {
+                    "check": "Fill",
+                    "name": "Name",
+                    "language": "Language",
+                    "condition": "Condition",
+                    "isSigned": "Signed",
+                    "comment": "Comment",
+                    "quantity": "Quantity",
+                    "price": "Price"
+                }
+            },
+            "mtg": {
+                "importCsvForm": {
+                    "set": {
+                        "label": "Set Column"
+                    },
+                    "isFoil": {
+                        "label": "Foil Column"
+                    }
+                },
+                "selectRowsFormTable": {
+                    "set": "Set",
+                    "isFoil": "Foil"
+                }
+            }
+        }
+    }
+}
